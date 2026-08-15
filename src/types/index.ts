@@ -48,7 +48,8 @@ export interface TravelMemory {
 }
 
 export interface AppState {
-  version: string
+  schemaVersion: number // 新增：当前架构版本（= CURRENT_SCHEMA_VERSION）
+  version: string // 保留：兼容旧导出文件（'1.0'/'2.0'）
   visitedCities: FootprintCity[]
   scenicSpots: ScenicSpot[]
   memories: TravelMemory[]

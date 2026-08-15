@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import DataExportImport from '../components/DataExportImport.vue'
 import { useFootprintStore } from '../stores/footprintStore'
 import { useScenicStore } from '../stores/scenicStore'
 import type { FootprintCity, ScenicSpot } from '../types'
+import { findCityCoords } from '../utils/cityCoords'
+import { resolveCityCoords } from '../utils/geoResolver'
 
 const footprintStore = useFootprintStore()
 const scenicStore = useScenicStore()
@@ -14,6 +16,59 @@ const activeTab = ref<'city' | 'scenic' | 'data'>('data')
 const cityForm = ref({ cityName: '', province: '', country: '中国', firstVisitDate: '', visitCount: 1, totalDays: 1, lat: '', lng: '' })
 const cityError = ref('')
 const citySuccess = ref('')
+
+// 城市名自动解析坐标（300ms 防抖，纯本地坐标库）
+const AUTO_FILL_PREFIX = '已自动填充坐标'
+const cityHint = ref('')
+const isAutoFilled = ref(false)
+let debounceTimer: number | undefined
+
+const runCityAutoResolve = async () => {
+  const name = cityForm.value.cityName.trim()
+  if (!name) {
+    cityHint.value = ''
+    isAutoFilled.value = false
+    return
+  }
+  const result = await resolveCityCoords({
+    cityName: name,
+    province: cityForm.value.province.trim() || undefined,
+  })
+  if (!result) {
+    cityHint.value = `未找到「${name}」的坐标，请手动填写`
+    return
+  }
+  if (cityForm.value.lat === '' || cityForm.value.lng === '') {
+    cityForm.value.lat = String(result.lat)
+    cityForm.value.lng = String(result.lng)
+    if (!cityForm.value.province.trim()) {
+      const coord = findCityCoords(name)
+      if (coord) cityForm.value.province = coord.province
+    }
+    isAutoFilled.value = true
+    cityHint.value = `${AUTO_FILL_PREFIX}（本地坐标库）：${result.lat}, ${result.lng}`
+  }
+}
+
+const onCityNameChange = () => {
+  window.clearTimeout(debounceTimer)
+  debounceTimer = window.setTimeout(() => {
+    void runCityAutoResolve()
+  }, 300)
+}
+
+// 用户手动编辑 lat/lng：清掉「自动填充」提示，已手填坐标不被自动覆盖
+const onLatLngManualEdit = () => {
+  isAutoFilled.value = false
+  cityHint.value = ''
+}
+
+watch(() => cityForm.value.cityName, onCityNameChange)
+
+onBeforeUnmount(() => {
+  window.clearTimeout(debounceTimer)
+})
+
 const addCity = () => {
   cityError.value = ''; citySuccess.value = ''
   if (!cityForm.value.cityName || !cityForm.value.province || !cityForm.value.firstVisitDate) {
@@ -37,6 +92,9 @@ const addCity = () => {
   }
   footprintStore.addCity(city)
   citySuccess.value = `已添加城市：${city.cityName}`
+  window.clearTimeout(debounceTimer)
+  isAutoFilled.value = false
+  cityHint.value = ''
   cityForm.value = { cityName: '', province: '', country: '中国', firstVisitDate: '', visitCount: 1, totalDays: 1, lat: '', lng: '' }
 }
 
@@ -97,10 +155,10 @@ const addScenic = () => {
         <div class="fg"><label>首次到访日期 *</label><input v-model="cityForm.firstVisitDate" type="date" class="fi" /></div>
         <div class="fg"><label>访问次数</label><input v-model.number="cityForm.visitCount" type="number" min="1" class="fi" /></div>
         <div class="fg"><label>停留天数</label><input v-model.number="cityForm.totalDays" type="number" min="1" class="fi" /></div>
-        <div class="fg"><label>纬度（lat） *</label><input v-model="cityForm.lat" class="fi" placeholder="如：30.5728" /></div>
-        <div class="fg"><label>经度（lng） *</label><input v-model="cityForm.lng" class="fi" placeholder="如：104.0668" /></div>
+        <div class="fg"><label>纬度（lat） *</label><input v-model="cityForm.lat" class="fi" placeholder="如：30.5728" @input="onLatLngManualEdit" /></div>
+        <div class="fg"><label>经度（lng） *</label><input v-model="cityForm.lng" class="fi" placeholder="如：104.0668" @input="onLatLngManualEdit" /></div>
       </div>
-      <div class="form-hint">💡 坐标可在高德地图/百度地图上查询城市经纬度</div>
+      <div class="form-hint">{{ cityHint || '输入城市名将自动填充坐标，也可手动修改' }}</div>
       <button class="submit-btn" @click="addCity">添加城市足迹</button>
       <div class="current-list">
         <h4>已记录的 {{ footprintStore.visitedCities.length }} 个城市</h4>

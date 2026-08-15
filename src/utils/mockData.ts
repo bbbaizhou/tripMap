@@ -1,7 +1,8 @@
 import type { AppState } from '../types'
 
 export const mockData: AppState = {
-  version: '1.0',
+  schemaVersion: 2,
+  version: '2.0',
   visitedCities: [
     {
       cityId: '370100',

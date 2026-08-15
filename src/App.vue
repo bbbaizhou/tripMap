@@ -5,12 +5,14 @@
       <RouterView />
     </main>
     <AppNav />
+    <InstallPrompt />
   </div>
 </template>
 
 <script setup lang="ts">
 import AppHeader from './components/AppHeader.vue'
 import AppNav from './components/AppNav.vue'
+import InstallPrompt from './components/InstallPrompt.vue'
 </script>
 
 <style scoped>

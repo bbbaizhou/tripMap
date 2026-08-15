@@ -3,9 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useFootprintStore } from '../stores/footprintStore'
-import { loadGeoJSON } from '../utils/geojsonLoader'
-
-const CHINA_GEOJSON_URL = 'https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json'
+import { loadChinaProvinces } from '../utils/geojsonLoader'
 
 const props = withDefaults(defineProps<{
   highlightCities?: string[]
@@ -20,6 +18,7 @@ const props = withDefaults(defineProps<{
 const footprintStore = useFootprintStore()
 const mapEl = ref<HTMLElement | null>(null)
 const fallbackVisible = ref(false)
+const geoSourceText = ref<'本地离线数据' | '在线数据' | ''>('')
 let map: L.Map | null = null
 let cityMarkersLayer: L.LayerGroup | null = null
 
@@ -110,11 +109,16 @@ onMounted(async () => {
   L.control.scale({ imperial: false, maxWidth: 120 }).addTo(map)
 
   try {
-    const geojson = await loadGeoJSON(CHINA_GEOJSON_URL)
-    L.geoJSON(geojson as any, {
-      style: getProvinceStyle,
-      onEachFeature,
-    }).addTo(map)
+    const { data, source } = await loadChinaProvinces()
+    if (data) {
+      L.geoJSON(data as any, {
+        style: getProvinceStyle,
+        onEachFeature,
+      }).addTo(map)
+      geoSourceText.value = source === 'local' ? '本地离线数据' : '在线数据'
+    } else {
+      fallbackVisible.value = true
+    }
   } catch {
     fallbackVisible.value = true
   }
@@ -136,7 +140,10 @@ watch(() => props.highlightCities, renderCityMarkers, { deep: true })
   <div class="china-map-wrapper" :style="{ height: props.height }">
     <div ref="mapEl" class="map-container" aria-label="中国旅行足迹地图" />
     <div v-show="fallbackVisible" class="fallback-notice">
-      地图瓦片加载失败，显示城市标记模式
+      省份边界数据加载失败，仅显示城市标记模式
+    </div>
+    <div v-show="!fallbackVisible && geoSourceText" class="geo-source-bar">
+      {{ geoSourceText }}
     </div>
   </div>
 </template>
@@ -166,6 +173,20 @@ watch(() => props.highlightCities, renderCityMarkers, { deep: true })
   font-size: 12px;
   color: #6b7280;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}
+
+.geo-source-bar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(232, 245, 233, 0.95);
+  color: #2e7d32;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   pointer-events: none;
 }
 

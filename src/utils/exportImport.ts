@@ -1,5 +1,5 @@
-import type { AppState } from '../types'
 import { loadState, saveState } from './storage'
+import { runMigrations } from './migrations'
 
 export function exportToJson(): void {
   const state = loadState()
@@ -20,25 +20,37 @@ export function importFromJson(file: File): Promise<{ success: boolean; message:
   return new Promise((resolve) => {
     const reader = new FileReader()
     reader.onload = (e) => {
+      let parsed: unknown
       try {
-        const text = e.target?.result as string
-        const parsed = JSON.parse(text) as AppState
-        if (
-          !parsed.version ||
-          !Array.isArray(parsed.visitedCities) ||
-          !Array.isArray(parsed.scenicSpots) ||
-          !Array.isArray(parsed.memories)
-        ) {
-          resolve({ success: false, message: '文件格式不正确，缺少必要字段（version / visitedCities / scenicSpots / memories）' })
-          return
-        }
-        saveState(parsed)
-        resolve({
-          success: true,
-          message: `已成功导入：${parsed.visitedCities.length} 个城市、${parsed.scenicSpots.length} 个景点、${parsed.memories.length} 条回忆`,
-        })
+        parsed = JSON.parse(e.target?.result as string)
       } catch {
         resolve({ success: false, message: 'JSON 解析失败，请确认文件格式正确' })
+        return
+      }
+
+      const record = (parsed && typeof parsed === 'object' ? parsed : {}) as Record<string, unknown>
+      if (
+        !Array.isArray(record.visitedCities) ||
+        !Array.isArray(record.scenicSpots) ||
+        !Array.isArray(record.memories)
+      ) {
+        resolve({
+          success: false,
+          message: '文件格式不正确，缺少必要字段（visitedCities / scenicSpots / memories）',
+        })
+        return
+      }
+
+      // 旧文件（无 schemaVersion）走迁移管线后再写回
+      try {
+        const { state, migrated } = runMigrations(parsed)
+        saveState(state)
+        resolve({
+          success: true,
+          message: `已成功导入：${state.visitedCities.length} 个城市、${state.scenicSpots.length} 个景点、${state.memories.length} 条回忆${migrated ? '（已自动升级数据版本）' : ''}`,
+        })
+      } catch {
+        resolve({ success: false, message: '数据版本迁移失败，请确认文件来自受支持的版本' })
       }
     }
     reader.readAsText(file, 'utf-8')
