@@ -41,6 +41,7 @@
 }
 
 .nav-item {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -50,10 +51,25 @@
   text-decoration: none;
   color: #9ca3af;
   padding: 8px 0;
-  transition: color 200ms ease;
+  transition: transform 200ms ease, color 200ms ease;
 }
 .nav-item.active {
-  color: #2e7d32;
+  color: var(--color-primary);
+  transform: translateY(-2px);
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-primary);
+}
+.nav-item.active .nav-label {
+  font-weight: 700;
 }
 .nav-icon { font-size: 20px; line-height: 1; }
 .nav-label { font-size: 10px; font-weight: 600; }

@@ -1,6 +1,6 @@
 <template>
   <header class="app-header">
-    <div class="brand">个人旅行足迹</div>
+    <div class="brand"><span class="brand-icon">🌏</span>个人旅行足迹</div>
     <nav class="nav-links">
       <RouterLink to="/">首页</RouterLink>
       <RouterLink to="/map">地图</RouterLink>
@@ -23,31 +23,43 @@
 }
 
 .brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 20px;
   font-weight: 700;
   color: #1f2937;
 }
 
+.brand-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
 .nav-links {
   display: flex;
-  gap: 16px;
+  gap: 8px;
 }
 
 .nav-links a {
   text-decoration: none;
   color: #6b7280;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  transition: all 200ms ease;
 }
 
 .nav-links a:hover {
-  color: #2e7d32;
+  background: var(--color-primary-lighter);
+  color: var(--color-primary);
 }
 
 .nav-links a.router-link-active,
 .nav-links a.router-link-exact-active {
-  color: #2e7d32;
+  background: var(--color-primary-lighter);
+  color: var(--color-primary);
   font-weight: 600;
-  border-bottom: 2px solid #2e7d32;
-  padding-bottom: 2px;
 }
 
 @media (max-width: 768px) {

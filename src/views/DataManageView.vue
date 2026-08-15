@@ -212,12 +212,14 @@ const addScenic = () => {
 .manage-header h2 { margin: 0 0 4px; }
 .manage-header p { margin: 0; font-size: 14px; color: #6b7280; }
 
-.tab-bar { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 2px solid #e4e7ed; }
+.tab-bar { display: flex; gap: 8px; margin-bottom: 24px; }
 .tab {
-  padding: 10px 20px; background: none; border: none; border-bottom: 2px solid transparent;
-  margin-bottom: -2px; font-size: 14px; font-weight: 600; color: #6b7280; cursor: pointer;
+  padding: 8px 18px; background: none; border: none; border-radius: 999px;
+  font-size: 14px; font-weight: 500; color: #6b7280; cursor: pointer;
+  transition: background 200ms ease, color 200ms ease;
 }
-.tab.active { color: #2e7d32; border-bottom-color: #2e7d32; }
+.tab.active { background: var(--color-primary-lighter); color: var(--color-primary); font-weight: 600; }
+.tab:hover { background: #f0f7f0; }
 
 .tab-content { max-width: 860px; }
 

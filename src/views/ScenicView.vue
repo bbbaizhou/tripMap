@@ -278,10 +278,12 @@ const confirmAddSpot = () => {
 }
 .level-tabs, .status-tabs { display: flex; gap: 4px; }
 .tab-btn {
-  padding: 6px 12px; border: 1px solid #e4e7ed; border-radius: 6px;
+  padding: 6px 14px; border: 1px solid #e4e7ed; border-radius: 999px;
   background: #f9fafb; font-size: 13px; cursor: pointer; color: #374151;
+  transition: background 200ms ease, color 200ms ease, border-color 200ms ease;
 }
-.tab-btn.active { background: #4caf50; color: #fff; border-color: #4caf50; }
+.tab-btn.active { background: var(--color-primary-lighter); color: var(--color-primary); border-color: #c8e6c9; font-weight: 600; }
+.tab-btn:hover { background: #f0f7f0; }
 .search-input {
   padding: 7px 12px; border: 1px solid #e4e7ed; border-radius: 8px;
   font-size: 13px; min-width: 180px; outline: none;
