@@ -1,9 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { generateItinerary, isAiConfigured, type DayPlan } from '../utils/aiClient'
+import { computed, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { generateItinerary, isAiConfigured, type DayPlan, type DaySpot } from '../utils/aiClient'
+import { buildMemoryDraft, plansToMarkdown, toScenicSpot, toSpotId } from '../utils/aiPlanActions'
+import { useScenicStore } from '../stores/scenicStore'
+import { useMemoryStore } from '../stores/memoryStore'
+import AiDayPlanCard from './AiDayPlanCard.vue'
 
 // 构建期静态替换：无 .env 时返回 false → 按钮禁用 + 常显提示，零请求。
 const aiConfigured = isAiConfigured()
+
+const scenicStore = useScenicStore()
+const memoryStore = useMemoryStore()
+const router = useRouter()
 
 const planForm = ref({
   destination: '',
@@ -51,7 +60,7 @@ const submitPlan = async () => {
   }
 }
 
-/** 测试辅助：写入硬编码 2 天 fixture，使卡片流渲染可无 Key 验收。 */
+/** 测试辅助：写入硬编码 2 天 fixture，使卡片流渲染可无 Key 验收（fixture 同样可执行三操作）。 */
 const previewSample = () => {
   plans.value = [...SAMPLE_ITINERARY]
   submitted.value = false
@@ -80,10 +89,124 @@ const SAMPLE_ITINERARY: DayPlan[] = [
     tips: '青城山建议缆车上行、步行下行，节省体力',
   },
 ]
+
+/** 三操作统一反馈：页面顶部单条提示条，3s 自动清除（A-C1），卸载时清理定时器。 */
+interface Feedback {
+  type: 'success' | 'error'
+  text: string
+  action?: { label: string; to: string }
+}
+
+const feedback = ref<Feedback | null>(null)
+let feedbackTimer: ReturnType<typeof setTimeout> | undefined
+
+const showFeedback = (type: Feedback['type'], text: string, action?: Feedback['action']) => {
+  if (feedbackTimer) clearTimeout(feedbackTimer)
+  feedback.value = { type, text, action }
+  feedbackTimer = setTimeout(() => {
+    feedback.value = null
+  }, 3000)
+}
+
+onUnmounted(() => {
+  if (feedbackTimer) clearTimeout(feedbackTimer)
+})
+
+/** 反馈条「前往查看」入口（A2-5）。 */
+const onFeedbackAction = () => {
+  const to = feedback.value?.action?.to
+  if (to) router.push(to)
+}
+
+/** 已加入心愿单的 spotId 列表：plans → toSpotId → scenicStore 反查（A1-2/A1-3 已加入态与去重）。 */
+const addedSpotIds = computed<string[]>(() => {
+  if (!plans.value) return []
+  return plans.value
+    .flatMap((plan) => plan.spots.map(toSpotId))
+    .filter((id) => scenicStore.getSpotById(id) !== undefined)
+})
+
+/** 操作 1：加入心愿单（store 写入统一收敛在父组件，try/catch + 全局反馈，A1-2/A1-8）。 */
+const addToWishlist = (spot: DaySpot) => {
+  try {
+    scenicStore.addSpot(toScenicSpot(spot))
+    showFeedback('success', `已加入心愿单：${spot.name}（内容由 AI 生成，请核实）`)
+  } catch (error) {
+    console.error('[AiPlan] 加入心愿单失败', error)
+    showFeedback('error', '加入心愿单失败，请稍后重试')
+  }
+}
+
+/** 操作 2：存为回忆草稿（A2-1～A2-7）。spotIds 保存时经 scenicStore 反查已加入心愿单的 spotId（A2-4）。 */
+const saveMemoryDraft = () => {
+  if (!plans.value || plans.value.length === 0) return
+  try {
+    const linkedSpotIds = plans.value
+      .flatMap((plan) => plan.spots.map(toSpotId))
+      .filter((id) => scenicStore.getSpotById(id) !== undefined)
+    const draft = buildMemoryDraft(planForm.value, plans.value, linkedSpotIds)
+    memoryStore.addMemory(draft)
+    showFeedback('success', '已存为回忆草稿（内容由 AI 生成，请核实）', { label: '前往查看', to: '/memories' })
+  } catch (error) {
+    console.error('[AiPlan] 存为回忆草稿失败', error)
+    showFeedback('error', '存为回忆草稿失败，请稍后重试')
+  }
+}
+
+/** 复制降级：临时 textarea + execCommand('copy')，非安全上下文唯一兜底（A3-3）。 */
+const copyViaExecCommand = (text: string): boolean => {
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  try {
+    return document.execCommand('copy')
+  } finally {
+    document.body.removeChild(textarea)
+  }
+}
+
+/** 操作 3：复制 Markdown（A3-1～A3-4）：clipboard 主路径 → execCommand 兜底 → 双失败 error，全程 try/catch 不崩溃。 */
+const copyMarkdown = async () => {
+  if (!plans.value || plans.value.length === 0) return
+  try {
+    const markdown = plansToMarkdown(planForm.value, plans.value)
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(markdown)
+        showFeedback('success', '已复制 Markdown（内容由 AI 生成，请核实）')
+        return
+      } catch {
+        // 主路径抛错 → 走 execCommand 兜底
+      }
+    }
+    const ok = copyViaExecCommand(markdown)
+    if (ok) {
+      showFeedback('success', '已复制 Markdown（内容由 AI 生成，请核实）')
+    } else {
+      showFeedback('error', '复制失败，请手动复制')
+    }
+  } catch (error) {
+    console.error('[AiPlan] 复制 Markdown 失败', error)
+    showFeedback('error', '复制失败，请手动复制')
+  }
+}
 </script>
 
 <template>
   <section class="plan-view">
+    <!-- 全局反馈条：三操作统一单条提示，3s 自动清除（A-C1/A-C2） -->
+    <div
+      v-if="feedback"
+      class="plan-feedback"
+      :class="feedback.type === 'success' ? 'form-success' : 'form-error'"
+    >
+      <span>{{ feedback.text }}</span>
+      <a v-if="feedback.action" class="feedback-action" @click="onFeedbackAction">{{ feedback.action.label }}</a>
+    </div>
+
     <div class="plan-header">
       <h2>AI 行程规划</h2>
       <p>输入目的地与偏好，生成每日行程建议</p>
@@ -143,21 +266,20 @@ const SAMPLE_ITINERARY: DayPlan[] = [
       <p>行程生成服务接入中（TODO Phase 5.2）</p>
     </div>
 
-    <!-- 日卡片流渲染 -->
+    <!-- 日卡片流渲染：AiDayPlanCard 纯展示 + 事件上抛，写操作收敛在本组件 -->
     <div v-if="plans && plans.length" class="plan-results">
-      <article v-for="plan in plans" :key="plan.day" class="day-card">
-        <div class="ai-badge">AI</div>
-        <h3 class="day-title">第 {{ plan.day }} 天 · {{ plan.title }}</h3>
-        <ul class="spot-list">
-          <li v-for="spot in plan.spots" :key="spot.name" class="spot-row">
-            <span class="spot-name">{{ spot.name }}</span>
-            <span class="spot-meta">{{ spot.city }} · {{ spot.level }} · 建议停留 {{ spot.duration }} 小时</span>
-            <span v-if="spot.tip" class="spot-tip">{{ spot.tip }}</span>
-          </li>
-        </ul>
-        <div v-if="plan.budget" class="day-budget">当日预算：{{ plan.budget }}</div>
-        <div v-if="plan.tips" class="day-tips">小贴士：{{ plan.tips }}</div>
-      </article>
+      <AiDayPlanCard
+        v-for="plan in plans"
+        :key="plan.day"
+        :plan="plan"
+        :added-spot-ids="addedSpotIds"
+        @add-to-wishlist="addToWishlist"
+      />
+      <!-- 底部操作栏：存为回忆草稿 / 复制 Markdown -->
+      <div class="plan-toolbar">
+        <button class="toolbar-btn" @click="saveMemoryDraft">存为回忆草稿</button>
+        <button class="toolbar-btn" @click="copyMarkdown">复制 Markdown</button>
+      </div>
       <p class="ai-compliance-note">内容由 AI 生成，仅供参考</p>
     </div>
   </section>
@@ -185,15 +307,14 @@ const SAMPLE_ITINERARY: DayPlan[] = [
   color: var(--color-text-secondary);
 }
 
-.plan-form-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-lg);
-  box-shadow: var(--shadow-card);
+/* 全局反馈条（.form-success/.form-error 配色从 DataManageView.vue 复制） */
+.plan-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-/* 复用 DataManageView 的 form 样式语言 */
 .form-error {
   background: #fef2f2;
   color: #dc2626;
@@ -201,6 +322,31 @@ const SAMPLE_ITINERARY: DayPlan[] = [
   border-radius: var(--radius-md);
   margin-bottom: 14px;
   font-size: var(--font-size-sm);
+}
+
+.form-success {
+  background: #f0fdf4;
+  color: #15803d;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 14px;
+  font-size: var(--font-size-sm);
+}
+
+.feedback-action {
+  color: var(--color-primary);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: underline;
+}
+
+.plan-form-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-card);
 }
 
 .form-grid {
@@ -302,83 +448,31 @@ const SAMPLE_ITINERARY: DayPlan[] = [
   font-size: var(--font-size-sm);
 }
 
-/* 日卡片 */
+/* 结果区：日卡片样式已随组件迁移至 AiDayPlanCard.vue */
 .plan-results {
   margin-top: var(--space-lg);
 }
 
-.day-card {
-  position: relative;
+/* 底部操作栏 */
+.plan-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-top: var(--space-md);
+}
+
+.toolbar-btn {
+  padding: 9px 22px;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-lg);
-  margin-bottom: var(--space-md);
-  box-shadow: var(--shadow-card);
-}
-
-.ai-badge {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.day-title {
-  margin: 0 0 var(--space-md);
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-}
-
-.spot-list {
-  list-style: none;
-  margin: 0 0 var(--space-md);
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.spot-row {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px;
-  background: var(--color-bg);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary-light);
   border-radius: var(--radius-md);
-}
-
-.spot-name {
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--color-text-primary);
+  cursor: pointer;
 }
 
-.spot-meta {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
-
-.spot-tip {
-  font-size: 12px;
-  color: var(--color-primary);
-}
-
-.day-budget {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-primary);
-  margin-bottom: var(--space-xs);
-}
-
-.day-tips {
-  font-size: 12px;
-  color: var(--color-text-secondary);
+.toolbar-btn:hover {
+  background: var(--color-primary-lighter);
 }
 
 .ai-compliance-note {
