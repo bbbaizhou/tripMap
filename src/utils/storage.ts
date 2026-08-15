@@ -1,6 +1,7 @@
 import type { AppState } from '../types'
 import { mockData } from './mockData'
 import { MigrationError, runMigrations } from './migrations'
+import { enqueueChange, type SyncEntity } from './syncService'
 
 const STORAGE_KEY = 'travel_footprint_data'
 
@@ -97,13 +98,55 @@ export function saveState(state: AppState): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 }
 
+/** patchState 写入口 → 同步队列实体映射（仅三个用户数据数组；schemaVersion/version 不入队）。 */
+const ENTITY_MAP: Partial<Record<keyof AppState, SyncEntity>> = {
+  visitedCities: 'cities',
+  scenicSpots: 'spots',
+  memories: 'memories',
+}
+
+/** 各实体记录主键字段名。 */
+const ID_FIELD: Record<SyncEntity, string> = { cities: 'cityId', spots: 'spotId', memories: 'memoryId' }
+
+/**
+ * 内容 diff 入队：按 entityId 建 Map，JSON.stringify 判内容相等。
+ * - 新有旧无 / 内容变化 → upsert（payload 为整条新记录）；
+ * - 旧有新无 → delete（不带 payload）；
+ * - 两边皆同 → 跳过（不产生噪声队列项）。
+ * 整体 try/catch：入队任何异常只 console.warn，绝不影响已完成的本地落盘。
+ */
+function enqueueArrayDiff(entity: SyncEntity, prev: unknown[], next: unknown[]): void {
+  try {
+    const idField = ID_FIELD[entity]
+    const prevById = new Map(
+      prev.map((r) => [(r as Record<string, unknown>)[idField], r] as const),
+    )
+    const nextById = new Map(
+      next.map((r) => [(r as Record<string, unknown>)[idField], r] as const),
+    )
+    for (const [id, rec] of nextById) {
+      if (typeof id !== 'string') continue // 无 id 记录防御性跳过
+      const old = prevById.get(id)
+      if (!old || JSON.stringify(old) !== JSON.stringify(rec)) {
+        enqueueChange({ entity, action: 'upsert', entityId: id, payload: rec as Record<string, unknown> })
+      }
+    }
+    for (const id of prevById.keys()) {
+      if (!nextById.has(id)) enqueueChange({ entity, action: 'delete', entityId: id as string })
+    }
+  } catch (err) {
+    console.warn('[storage] 同步入队失败（不影响本地落盘）', err)
+  }
+}
+
 export function patchState<K extends keyof AppState>(key: K, value: AppState[K]): void {
   const { state, source } = loadStateDetailed()
   // 损坏数据已隔离：不写回 mockData，保护 STORAGE_KEY 的损坏现场（不覆盖原值）
   if (source === 'quarantined') return
+  const prev = state[key] as unknown[]
   state[key] = value
   saveState(state)
-  // TODO(Phase 4.2 云同步)：store 写入口挂钩点 —— 三个 store 的写操作最终都经 patchState 落盘，
-  // 未来在此追加 enqueueChange({ entity: 对应数组名, action: 'upsert', entityId, payload })
-  // 即可让每次落盘变更同时进入同步队列（store 签名与 storage.ts 签名均不改动）。
+  // 先落盘、后入队：入队任何异常都不影响 localStorage 写盘；内容全等（如启动 init）则零入队
+  const entity = ENTITY_MAP[key]
+  if (entity && Array.isArray(prev) && Array.isArray(value)) enqueueArrayDiff(entity, prev, value)
 }

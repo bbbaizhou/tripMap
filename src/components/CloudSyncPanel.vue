@@ -6,6 +6,16 @@ const status = ref<SyncStatus>(getSyncStatus())
 const lastSyncedAt = ref(getLastSyncedAt())
 const busy = ref(false)
 
+// 网络在线状态（navigator 访问带守卫，与 syncService 同风格）
+const online = ref(typeof navigator !== 'undefined' ? navigator.onLine : true)
+
+// 唯一展示出口：disabled 优先 > 离线覆盖 > 服务态；在线时把残留 offline 映射回 idle（修复粘滞）
+const displayStatus = computed<SyncStatus>(() => {
+  if (status.value === 'disabled') return 'disabled' // 未配置不随网络变
+  if (!online.value) return 'offline' // 离线覆盖 idle/error/syncing
+  return status.value === 'offline' ? 'idle' : status.value // 在线时不再粘滞 offline
+})
+
 const STATUS_LABELS: Record<SyncStatus, string> = {
   disabled: '未配置',
   idle: '已就绪',
@@ -14,7 +24,7 @@ const STATUS_LABELS: Record<SyncStatus, string> = {
   error: '同步异常',
 }
 
-const statusLabel = computed(() => STATUS_LABELS[status.value])
+const statusLabel = computed(() => STATUS_LABELS[displayStatus.value])
 const lastSyncText = computed(() => lastSyncedAt.value ?? '暂无')
 const pendingCount = computed(() => getSyncQueue().length)
 
@@ -28,10 +38,19 @@ const handleSync = async () => {
   refresh()
   busy.value = false
 }
-const onOnline = () => refresh()
-const onOffline = () => refresh()
+const onOnline = () => {
+  online.value = true
+  refresh() // refresh 仍同步服务层缓存，防后续服务态变化被吞
+}
+const onOffline = () => {
+  online.value = false
+  refresh()
+}
 
 onMounted(() => {
+  // 初始即正确：先按当前 navigator.onLine 定展示态，再刷新服务层缓存
+  online.value = navigator.onLine
+  refresh()
   window.addEventListener('online', onOnline)
   window.addEventListener('offline', onOffline)
 })
@@ -61,7 +80,7 @@ onBeforeUnmount(() => {
   <!-- 已配置：状态徽标 + 待同步条数 + 立即同步按钮（dry-run 骨架） -->
   <div v-else class="action-card sync-card">
     <div class="sync-head">
-      <span class="status-badge" :class="status">{{ statusLabel }}</span>
+      <span class="status-badge" :class="displayStatus">{{ statusLabel }}</span>
       <span class="pending-hint">待同步 {{ pendingCount }} 条</span>
     </div>
     <div class="action-desc">上次同步：{{ lastSyncText }}</div>
