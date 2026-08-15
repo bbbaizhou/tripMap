@@ -3,6 +3,8 @@ import { computed, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { generateItinerary, isAiConfigured, type DayPlan, type DaySpot } from '../utils/aiClient'
 import { buildMemoryDraft, plansToMarkdown, toScenicSpot, toSpotId } from '../utils/aiPlanActions'
+import { checkTexts, UNSAFE_HIDDEN_TEXT } from '../utils/contentFilter'
+import { trackAiFeedback, trackAiUse } from '../utils/aiTracking'
 import { useScenicStore } from '../stores/scenicStore'
 import { useMemoryStore } from '../stores/memoryStore'
 import AiDayPlanCard from './AiDayPlanCard.vue'
@@ -28,10 +30,40 @@ const generating = ref(false)
 const submitted = ref(false)
 const plans = ref<DayPlan[] | null>(null)
 
+/** 5.7：行程结果展示前过滤标记（true 时不展示原文，显示安全校验占位）。 */
+const planUnsafe = ref(false)
+
+/** 5.7：把行程逐段（天标题/景点/预算/Tips）合并检查；命中敏感词 → 隐藏整份结果。 */
+const checkPlansSafety = (result: DayPlan[]): boolean => {
+  const texts: string[] = []
+  for (const plan of result) {
+    texts.push(plan.title ?? '')
+    texts.push(plan.budget ?? '')
+    texts.push(plan.tips ?? '')
+    for (const spot of plan.spots) {
+      texts.push(spot.name ?? '', spot.city ?? '', spot.tip ?? '')
+    }
+  }
+  const check = checkTexts(texts)
+  if (!check.safe) {
+    console.warn('[AiPlan] 行程内容未通过安全校验，已隐藏', check.hits)
+  }
+  return check.safe
+}
+
 /** days 合法范围 1-15，越界 clamp（@change 与提交时各执行一次）。 */
 const normalizeDays = () => {
   const raw = Number(planForm.value.days)
   planForm.value.days = Number.isFinite(raw) ? Math.min(15, Math.max(1, Math.round(raw))) : 1
+}
+
+/** 5.8：行程结果 👍/👎 反馈——同结果只记一次（已评状态禁用按钮，刷新后重置）。 */
+const rated = ref<'up' | 'down' | null>(null)
+const rateResult = (rating: 'up' | 'down') => {
+  if (rated.value !== null) return
+  rated.value = rating
+  const dest = planForm.value.destination.trim()
+  trackAiFeedback('itinerary', rating, dest ? `目的地：${dest}` : undefined)
 }
 
 const submitPlan = async () => {
@@ -42,11 +74,11 @@ const submitPlan = async () => {
   }
   normalizeDays()
   plans.value = null
+  planUnsafe.value = false
   submitted.value = true
   if (!aiConfigured) return // 按钮已禁用，此处兜底：未配置时绝不触达生成函数
   generating.value = true
   try {
-    // 骨架：当前恒返回 null（占位），Phase 5.2 接入真实调用后此处直接生效。
     plans.value = await generateItinerary({
       destination: planForm.value.destination.trim(),
       days: planForm.value.days,
@@ -55,15 +87,23 @@ const submitPlan = async () => {
       companions: planForm.value.companions.trim() || undefined,
       startDate: planForm.value.startDate || undefined,
     })
+    // 5.7 展示前过滤：行程结果含敏感词 → 不展示原文（safe=false 显示占位）
+    if (plans.value && plans.value.length) {
+      planUnsafe.value = !checkPlansSafety(plans.value)
+    }
   } finally {
     generating.value = false
   }
+  // 5.8 埋点：生成成功（plans 非 null）/ 失败（null）；新结果重置反馈已评状态
+  trackAiUse('itinerary', plans.value !== null)
+  rated.value = null
 }
 
 /** 测试辅助：写入硬编码 2 天 fixture，使卡片流渲染可无 Key 验收（fixture 同样可执行三操作）。 */
 const previewSample = () => {
   plans.value = [...SAMPLE_ITINERARY]
   submitted.value = false
+  planUnsafe.value = false
 }
 
 const SAMPLE_ITINERARY: DayPlan[] = [
@@ -262,12 +302,17 @@ const copyMarkdown = async () => {
     </div>
 
     <!-- 已配置但骨架未接入：空态 -->
-    <div v-if="submitted && !plans" class="plan-empty">
+    <div v-if="submitted && !plans && !planUnsafe" class="plan-empty">
       <p>行程生成服务接入中（TODO Phase 5.2）</p>
     </div>
 
+    <!-- 5.7：行程结果含敏感词 → 不展示原文，显示安全校验占位 -->
+    <div v-if="planUnsafe" class="plan-empty plan-unsafe">
+      <p>{{ UNSAFE_HIDDEN_TEXT }}</p>
+    </div>
+
     <!-- 日卡片流渲染：AiDayPlanCard 纯展示 + 事件上抛，写操作收敛在本组件 -->
-    <div v-if="plans && plans.length" class="plan-results">
+    <div v-if="plans && plans.length && !planUnsafe" class="plan-results">
       <AiDayPlanCard
         v-for="plan in plans"
         :key="plan.day"
@@ -279,6 +324,17 @@ const copyMarkdown = async () => {
       <div class="plan-toolbar">
         <button class="toolbar-btn" @click="saveMemoryDraft">存为回忆草稿</button>
         <button class="toolbar-btn" @click="copyMarkdown">复制 Markdown</button>
+      </div>
+
+      <!-- 5.8：行程结果 👍/👎 反馈条（同结果只记一次） -->
+      <div class="plan-feedback-bar">
+        <span class="fb-label">这个行程对你有帮助吗？</span>
+        <button class="fb-btn" :class="{ 'fb-active': rated === 'up' }" :disabled="rated !== null" @click="rateResult('up')">
+          👍 有帮助
+        </button>
+        <button class="fb-btn" :class="{ 'fb-active': rated === 'down' }" :disabled="rated !== null" @click="rateResult('down')">
+          👎 一般
+        </button>
       </div>
       <p class="ai-compliance-note">内容由 AI 生成，仅供参考</p>
     </div>
@@ -448,6 +504,13 @@ const copyMarkdown = async () => {
   font-size: var(--font-size-sm);
 }
 
+/* 5.7：行程未通过安全校验占位 */
+.plan-unsafe {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
 /* 结果区：日卡片样式已随组件迁移至 AiDayPlanCard.vue */
 .plan-results {
   margin-top: var(--space-lg);
@@ -473,6 +536,50 @@ const copyMarkdown = async () => {
 
 .toolbar-btn:hover {
   background: var(--color-primary-lighter);
+}
+
+/* 5.8：结果反馈条 */
+.plan-feedback-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: var(--space-md);
+  padding: 10px 14px;
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.fb-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-right: auto;
+}
+
+.fb-btn {
+  padding: 6px 14px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.fb-btn:hover:not(:disabled) {
+  border-color: var(--color-primary-light);
+  background: var(--color-primary-lighter);
+}
+
+.fb-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.fb-btn.fb-active {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary-light);
+  color: #fff;
 }
 
 .ai-compliance-note {

@@ -2,6 +2,7 @@
 import { onBeforeUnmount, ref, watch } from 'vue'
 import CloudSyncPanel from '../components/CloudSyncPanel.vue'
 import DataExportImport from '../components/DataExportImport.vue'
+import AiUsagePanel from '../components/AiUsagePanel.vue'
 import { useFootprintStore } from '../stores/footprintStore'
 import { useScenicStore } from '../stores/scenicStore'
 import type { FootprintCity, ScenicSpot } from '../types'
@@ -11,7 +12,7 @@ import { resolveCityCoords } from '../utils/geoResolver'
 const footprintStore = useFootprintStore()
 const scenicStore = useScenicStore()
 
-const activeTab = ref<'city' | 'scenic' | 'data'>('data')
+const activeTab = ref<'city' | 'scenic' | 'data' | 'ai'>('data')
 
 // 城市新增表单
 const cityForm = ref({ cityName: '', province: '', country: '中国', firstVisitDate: '', visitCount: 1, totalDays: 1, lat: '', lng: '' })
@@ -138,6 +139,7 @@ const addScenic = () => {
       <button :class="['tab', activeTab === 'data' && 'active']" @click="activeTab = 'data'">备份与恢复</button>
       <button :class="['tab', activeTab === 'city' && 'active']" @click="activeTab = 'city'">添加城市足迹</button>
       <button :class="['tab', activeTab === 'scenic' && 'active']" @click="activeTab = 'scenic'">添加景点</button>
+      <button :class="['tab', activeTab === 'ai' && 'active']" @click="activeTab = 'ai'">AI 使用</button>
     </div>
 
     <!-- 备份恢复 -->
@@ -203,6 +205,11 @@ const addScenic = () => {
         <div class="fg full-width"><label>简介</label><input v-model="scenicForm.description" class="fi" placeholder="可选" /></div>
       </div>
       <button class="submit-btn" @click="addScenic">添加到心愿单</button>
+    </div>
+
+    <!-- AI 使用（5.8：计数 / 反馈 / 导出 / 清空，localStorage 独立 key） -->
+    <div v-if="activeTab === 'ai'" class="tab-content">
+      <AiUsagePanel />
     </div>
   </section>
 </template>

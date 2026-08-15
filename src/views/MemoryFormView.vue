@@ -47,6 +47,12 @@ const splitInput = (raw: string) =>
 
 const validationError = ref('')
 
+// 5.7 预留调用点（本轮不实现，仅注释）：
+// 保存用户回忆时对 title/content/tags 做 checkContent 软提示（warn 级、不阻断保存，
+// P2 可升级为阻断）。公开分享（Phase 6）导出前强制 checkContent（见 PHASE6 6.5）。
+// 例：const check = checkContent(form.value.title + form.value.content)；check.safe === false 时
+// console.warn('[MemoryForm] 内容含敏感词（软提示，已保存）', check.hits)
+
 const handleSubmit = () => {
   validationError.value = ''
   if (!form.value.title.trim()) {

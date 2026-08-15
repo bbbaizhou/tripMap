@@ -6,7 +6,7 @@ import type { YearlyInsightStats } from './insightStats'
  * - mode 'proxy'（VITE_AI_ENDPOINT 指向 Supabase Edge Function ai-proxy）：
  *   携带用户 JWT 调 Edge Function，DeepSeek Key 由服务端 Secrets 保管，bundle 零 Key。
  * - mode 'direct'（开发降级路径）：直接调 DeepSeek，Bearer apiKey（仅本地开发用）。
- * 下方三个 systemPrompt（ITINERARY / INSIGHTS / AUTO_TAG）与
+ * 下方四个 systemPrompt（ITINERARY / INSIGHTS / AUTO_TAG / SPOT_INFO）与
  * supabase/functions/ai-proxy/index.ts 中的同名常量【原样一致，需人工保持同步】——
  * 两文件互指注释，唯一不同步点，改动任何一侧必须同步另一侧。
  */
@@ -57,6 +57,19 @@ export interface AutoTagRequest {
   cities: string[]
 }
 
+/** 景点信息补全请求（任务 5.6-C → describeSpot）。 */
+export interface SpotInfoRequest {
+  spotName: string
+  city: string
+  province?: string
+}
+
+/** 景点信息补全结果：description 必填非空；bestSeason 可缺省。 */
+export interface SpotInfoResult {
+  description: string
+  bestSeason?: string
+}
+
 /** 默认 DeepSeek 兼容端点（接入后端代理后由 VITE_AI_ENDPOINT 覆盖）。 */
 const DEFAULT_ENDPOINT = 'https://api.deepseek.com/chat/completions'
 
@@ -93,7 +106,7 @@ export function getAiConfig(): AiConfig | null {
 }
 
 /** AI 动作类型：与 Edge Function 的 action 分发表一一对应。 */
-export type AiAction = 'itinerary' | 'insights' | 'tags'
+export type AiAction = 'itinerary' | 'insights' | 'tags' | 'spotInfo'
 
 /**
  * 通用 AI 调用封装（私有）：POST 到 cfg.endpoint，30s 超时，要求 JSON 输出。
@@ -175,6 +188,15 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string')
 }
 
+/** 形状校验：description 为非空 string 才通过；bestSeason 可缺省（任务 5.6-C）。 */
+function isSpotInfoResult(value: unknown): value is SpotInfoResult {
+  if (!value || typeof value !== 'object') return false
+  const record = value as Record<string, unknown>
+  if (typeof record.description !== 'string' || !record.description.trim()) return false
+  if (record.bestSeason !== undefined && typeof record.bestSeason !== 'string') return false
+  return true
+}
+
 /** 形状校验：是否为 DayPlan[]（day 数字 / title 字符串 / spots 数组，缺一判结构不符）。 */
 function isDayPlanArray(value: unknown): value is DayPlan[] {
   if (!Array.isArray(value)) return false
@@ -227,6 +249,16 @@ function serializeAutoTagRequest(input: AutoTagRequest): string {
   ].join('\n')
 }
 
+/** 序列化景点信息补全请求为中文文本。 */
+function serializeSpotInfoRequest(input: SpotInfoRequest): string {
+  return [
+    '请为以下旅行景点生成简介资料：',
+    `- 景点名称：${input.spotName}`,
+    `- 所在城市：${input.city}`,
+    `- 省份：${input.province?.trim() || '未知'}`,
+  ].join('\n')
+}
+
 /** 行程规划 system prompt：资深旅行规划师角色约束。（与 supabase/functions/ai-proxy/index.ts 原样同步） */
 const ITINERARY_SYSTEM_PROMPT = [
   '你是一位资深旅行规划师，擅长制定兼顾体验与效率的旅行行程。请严格遵守：',
@@ -253,6 +285,15 @@ const AUTO_TAG_SYSTEM_PROMPT = [
   '1) 生成 3-5 个中文短标签，每个 2-6 字；',
   '2) 标签应精准概括内容主题、风格或地点特色；',
   '3) 必须只输出合法 JSON，结构严格为：{ "tags": ["...", "..."] }，禁止输出其他内容。',
+].join('\n')
+
+/** 景点信息补全 system prompt：旅行景点资料编辑角色约束。（与 supabase/functions/ai-proxy/index.ts 原样同步） */
+const SPOT_INFO_SYSTEM_PROMPT = [
+  '你是一位旅行景点资料编辑。请根据景点名称、所在城市和省份生成资料。请严格遵守：',
+  '1) 生成 1-3 句话的景点简介（description），概括其特色、看点与游览价值；',
+  '2) 可选给出最佳游玩季节（bestSeason），如「春秋两季」；',
+  '3) 简介中不得编造具体门票价格、开放时间等易变信息；',
+  '4) 必须只输出合法 JSON，结构严格为：{ "description": "...", "bestSeason": "..." }，禁止输出其他内容。',
 ].join('\n')
 
 /**
@@ -286,4 +327,15 @@ export async function autoTag(input: AutoTagRequest, cfg: AiConfig | null = getA
   const result = await callDeepSeek<{ tags?: unknown }>(cfg, 'tags', AUTO_TAG_SYSTEM_PROMPT, serializeAutoTagRequest(input))
   if (!result || !isStringArray(result.tags)) return null
   return result.tags
+}
+
+/**
+ * 景点信息补全（任务 5.6-C）：真实调用 DeepSeek，失败/超时/结构不符返回 null。
+ * 未配置（cfg 为 null）直接返回 null，不发起任何网络请求。
+ */
+export async function describeSpot(input: SpotInfoRequest, cfg: AiConfig | null = getAiConfig()): Promise<SpotInfoResult | null> {
+  if (!cfg) return null
+  const result = await callDeepSeek<unknown>(cfg, 'spotInfo', SPOT_INFO_SYSTEM_PROMPT, serializeSpotInfoRequest(input))
+  if (!isSpotInfoResult(result)) return null
+  return result
 }

@@ -5,10 +5,10 @@
 // 契约（见 docs/edge_function_deploy.md）：
 //   POST https://<ref>.supabase.co/functions/v1/ai-proxy
 //   Authorization: Bearer <user JWT>          # 必填；缺失/无效 → 401
-//   Body: { "action": "itinerary"|"insights"|"tags", "payload": "<前端序列化出的中文文本>" }
+//   Body: { "action": "itinerary"|"insights"|"tags"|"spotInfo", "payload": "<前端序列化出的中文文本>" }
 //   成功 → 200，响应为 DeepSeek 解析后的 JSON（{days}/{insights}/{tags}，与前端期望一致）。
 //
-// 注意：下方三个 systemPrompt（ITINERARY / INSIGHTS / AUTO_TAG）与
+// 注意：下方四个 systemPrompt（ITINERARY / INSIGHTS / AUTO_TAG / SPOT_INFO）与
 // src/utils/aiClient.ts 中的同名常量【原样一致，需人工保持同步】——两文件互指注释，
 // 唯一不同步点，改动任何一侧必须同步另一侧。
 //
@@ -63,11 +63,21 @@ const AUTO_TAG_SYSTEM_PROMPT = [
   '3) 必须只输出合法 JSON，结构严格为：{ "tags": ["...", "..."] }，禁止输出其他内容。',
 ].join('\n')
 
+/** 景点信息补全 system prompt：旅行景点资料编辑角色约束。（与 aiClient.ts 原样同步） */
+const SPOT_INFO_SYSTEM_PROMPT = [
+  '你是一位旅行景点资料编辑。请根据景点名称、所在城市和省份生成资料。请严格遵守：',
+  '1) 生成 1-3 句话的景点简介（description），概括其特色、看点与游览价值；',
+  '2) 可选给出最佳游玩季节（bestSeason），如「春秋两季」；',
+  '3) 简介中不得编造具体门票价格、开放时间等易变信息；',
+  '4) 必须只输出合法 JSON，结构严格为：{ "description": "...", "bestSeason": "..." }，禁止输出其他内容。',
+].join('\n')
+
 /** action → systemPrompt 分发表。action 非法 → 400。 */
 const SYSTEM_PROMPTS: Record<string, string> = {
   itinerary: ITINERARY_SYSTEM_PROMPT,
   insights: INSIGHTS_SYSTEM_PROMPT,
   tags: AUTO_TAG_SYSTEM_PROMPT,
+  spotInfo: SPOT_INFO_SYSTEM_PROMPT,
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {

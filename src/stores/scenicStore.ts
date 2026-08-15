@@ -32,6 +32,14 @@ export const useScenicStore = defineStore('scenic', () => {
     spots.value = spots.value.filter(s => s.spotId !== spotId)
   }
 
+  /** 部分更新单个景点（仿 memoryStore.updateMemory；任务 5.6 坐标兜底/信息补全写入用）。 */
+  const updateSpot = (spotId: string, updates: Partial<ScenicSpot>) => {
+    const idx = spots.value.findIndex(s => s.spotId === spotId)
+    if (idx !== -1) {
+      spots.value[idx] = { ...spots.value[idx], ...updates }
+    }
+  }
+
   const toggleStatus = (spotId: string, status: SpotStatus, visitDate?: string) => {
     const spot = spots.value.find(s => s.spotId === spotId)
     if (spot) {
@@ -58,6 +66,7 @@ export const useScenicStore = defineStore('scenic', () => {
     wishlistSpots,
     addSpot,
     removeSpot,
+    updateSpot,
     toggleStatus,
     getSpotById,
     getSpotsByProvince,

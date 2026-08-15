@@ -5,6 +5,9 @@ import { useScenicStore } from '../stores/scenicStore'
 import { useMemoryStore } from '../stores/memoryStore'
 import { computeYearlyInsights, getInsightYears } from '../utils/insightStats'
 import { generateInsights, isAiConfigured } from '../utils/aiClient'
+import { checkContent, UNSAFE_HIDDEN_TEXT } from '../utils/contentFilter'
+import { trackAiUse } from '../utils/aiTracking'
+import YearlyShareCard from '../components/YearlyShareCard.vue'
 
 const footprintStore = useFootprintStore()
 const scenicStore = useScenicStore()
@@ -54,14 +57,41 @@ watch(selectedYear, async (year) => {
   insights.value = null
   if (!year || !aiConfigured) return // 未配置：绝不触达生成函数（零请求）
   insightsLoading.value = true
+  let result: string[] | null = null
   try {
-    insights.value = await generateInsights({ year, stats: computeYearlyInsights(sourceData.value, year) })
+    result = await generateInsights({ year, stats: computeYearlyInsights(sourceData.value, year) })
+    insights.value = result
   } finally {
     insightsLoading.value = false
   }
+  // 5.8 埋点：解读生成成功（非空结果）/ 失败（null 或空）
+  trackAiUse('insights', Array.isArray(result) && result.length > 0)
+  // 5.7 内容安全：AI 解读展示前过滤，命中敏感词时不展示原文（hits 仅 debug 打印）
+  if (insights.value && insights.value.length) {
+    const unsafeHits = insights.value
+      .map((item) => checkContent(item))
+      .filter((r) => !r.safe)
+    if (unsafeHits.length) {
+      console.warn('[AiInsights] 解读含未通过安全校验的内容，已隐藏', unsafeHits)
+    }
+  }
 })
 
-// TODO(P2)：Canvas 1080×1080 绘制年度报告分享卡片 + PNG 导出，本轮仅预留容器占位。
+/** 展示用解读列表：每条附带 5.7 安全检查结果（safe=false 显示占位，不展示原文）。 */
+const insightChecks = computed(() =>
+  (insights.value ?? []).map((item) => {
+    const result = checkContent(item)
+    return { text: item, safe: result.safe }
+  }),
+)
+
+// 分享卡片（任务 5.5）：6 项统计（stats null 时传 null → 组件禁用）与足迹城市点线装饰数据
+const shareStats = computed(() => (stats.value ? statCards.value : null))
+const cityPins = computed(() =>
+  footprintStore.visitedCities
+    .filter((c) => c.lat !== 0 || c.lng !== 0)
+    .map((c) => ({ name: c.cityName, lat: c.lat, lng: c.lng })),
+)
 </script>
 
 <template>
@@ -104,21 +134,22 @@ watch(selectedYear, async (year) => {
           AI 能力未配置：配置后生成个性化解读
         </div>
         <div v-else-if="insightsLoading" class="insight-placeholder">解读生成中…</div>
-        <div v-else-if="insights && insights.length" class="insight-list">
-          <p v-for="(item, index) in insights" :key="index" class="insight-item">{{ item }}</p>
+        <div v-else-if="insightChecks.length" class="insight-list">
+          <p
+            v-for="(item, index) in insightChecks"
+            :key="index"
+            class="insight-item"
+            :class="{ 'insight-unsafe': !item.safe }"
+          >
+            {{ item.safe ? item.text : UNSAFE_HIDDEN_TEXT }}
+          </p>
           <p class="insight-note">内容由 AI 生成，仅供参考</p>
         </div>
-        <div v-else class="insight-placeholder">解读生成接入中（TODO Phase 5.2）</div>
+        <div v-else class="insight-placeholder">解读生成失败，请稍后重试</div>
       </div>
 
-      <!-- 年度报告分享卡片（预留容器） -->
-      <div class="share-card">
-        <div class="share-card-title">年度报告分享卡片</div>
-        <p class="share-placeholder">
-          Canvas 1080×1080 绘制 + PNG 导出将在 P2 实现（本轮仅预留容器）
-        </p>
-        <button class="share-btn" disabled>生成分享卡片（P2）</button>
-      </div>
+      <!-- 年度报告分享卡片（任务 5.5：Canvas 1080×1080 绘制 → PNG 预览/下载/复制） -->
+      <YearlyShareCard :year="selectedYear" :stats="shareStats" :city-pins="cityPins" />
     </template>
   </section>
 </template>
@@ -260,43 +291,19 @@ watch(selectedYear, async (year) => {
   line-height: 1.7;
 }
 
+/* 5.7：未通过安全校验的解读占位（不展示原文） */
+.insight-unsafe {
+  color: var(--color-text-secondary);
+  font-style: italic;
+  background: #fef2f2;
+  border: 1px dashed #fca5a5;
+}
+
 .insight-note {
   margin: 0;
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
   text-align: right;
-}
-
-/* 分享卡片预留容器 */
-.share-card {
-  background: var(--color-surface);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-lg);
-  text-align: center;
-}
-
-.share-card-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  margin-bottom: var(--space-sm);
-}
-
-.share-placeholder {
-  margin: 0 0 var(--space-md);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.share-btn {
-  padding: 8px 20px;
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  cursor: not-allowed;
 }
 
 @media (max-width: 768px) {
