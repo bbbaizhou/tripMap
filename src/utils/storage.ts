@@ -1,7 +1,7 @@
 import type { AppState } from '../types'
 import { mockData } from './mockData'
 import { MigrationError, runMigrations } from './migrations'
-import { enqueueChange, type SyncEntity } from './syncService'
+import { enqueueChange, scheduleAutoSync, type SyncEntity } from './syncService'
 
 const STORAGE_KEY = 'travel_footprint_data'
 
@@ -108,6 +108,25 @@ const ENTITY_MAP: Partial<Record<keyof AppState, SyncEntity>> = {
 /** 各实体记录主键字段名。 */
 const ID_FIELD: Record<SyncEntity, string> = { cities: 'cityId', spots: 'spotId', memories: 'memoryId' }
 
+/** 入队抑制开关：置位期间 patchState 跳过 enqueueArrayDiff 与自动同步（本地落盘不受影响）。 */
+let suppressEnqueue = false
+
+/**
+ * 入队抑制窗口：置位 suppressEnqueue 执行 fn 后复位（try/finally 保证异常也不泄漏置位）。
+ * 用途：拉取写回编排（cloudPull.pullCloudAndApply）在 changed 时用本函数包裹三 store
+ * reloadFromStorage——写回只走 saveState + reloadFromStorage，不触发 enqueueArrayDiff →
+ * 不触发自动同步 → 无循环推送（内容全等路径本身零入队，本开关兜底内容不同场景）。
+ * 默认 false：patchState 原行为不变。
+ */
+export function withEnqueueSuppressed<T>(fn: () => T): T {
+  suppressEnqueue = true
+  try {
+    return fn()
+  } finally {
+    suppressEnqueue = false
+  }
+}
+
 /**
  * 内容 diff 入队：按 entityId 建 Map，JSON.stringify 判内容相等。
  * - 新有旧无 / 内容变化 → upsert（payload 为整条新记录）；
@@ -148,5 +167,11 @@ export function patchState<K extends keyof AppState>(key: K, value: AppState[K])
   saveState(state)
   // 先落盘、后入队：入队任何异常都不影响 localStorage 写盘；内容全等（如启动 init）则零入队
   const entity = ENTITY_MAP[key]
-  if (entity && Array.isArray(prev) && Array.isArray(value)) enqueueArrayDiff(entity, prev, value)
+  if (entity && Array.isArray(prev) && Array.isArray(value)) {
+    // 拉取写回抑制：跳过入队与自动同步（本地落盘已完成；杜绝回推与循环推送）
+    if (suppressEnqueue) return
+    enqueueArrayDiff(entity, prev, value)
+    // 变更自动推送挂钩：2s 防抖；守卫（未配置/离线/未登录/队列空）在 syncService 内静默跳过
+    scheduleAutoSync()
+  }
 }

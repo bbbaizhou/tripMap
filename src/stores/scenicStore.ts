@@ -1,13 +1,19 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import type { ScenicSpot, SpotStatus } from '../types'
-import { loadState, patchState } from '../utils/storage'
+import { loadState, loadStateDetailed, patchState } from '../utils/storage'
 
 export const useScenicStore = defineStore('scenic', () => {
   const spots = ref<ScenicSpot[]>([])
 
   const init = () => {
     const state = loadState()
+    spots.value = state.scenicSpots
+  }
+
+  /** 从 localStorage 重载本数组（拉取写回用）：内容相同 diff 零入队；内容不同由抑制标志兜底，杜绝回推。 */
+  const reloadFromStorage = () => {
+    const { state } = loadStateDetailed()
     spots.value = state.scenicSpots
   }
 
@@ -47,6 +53,7 @@ export const useScenicStore = defineStore('scenic', () => {
   return {
     spots,
     init,
+    reloadFromStorage,
     visitedSpots,
     wishlistSpots,
     addSpot,

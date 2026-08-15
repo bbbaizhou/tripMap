@@ -1,13 +1,19 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import type { FootprintCity } from '../types'
-import { loadState, patchState } from '../utils/storage'
+import { loadState, loadStateDetailed, patchState } from '../utils/storage'
 
 export const useFootprintStore = defineStore('footprint', () => {
   const visitedCities = ref<FootprintCity[]>([])
 
   const init = () => {
     const state = loadState()
+    visitedCities.value = state.visitedCities
+  }
+
+  /** 从 localStorage 重载本数组（拉取写回用）：内容相同 diff 零入队；内容不同由抑制标志兜底，杜绝回推。 */
+  const reloadFromStorage = () => {
+    const { state } = loadStateDetailed()
     visitedCities.value = state.visitedCities
   }
 
@@ -40,6 +46,7 @@ export const useFootprintStore = defineStore('footprint', () => {
   return {
     visitedCities,
     init,
+    reloadFromStorage,
     getVisitedProvinces,
     addCity,
     removeCity,

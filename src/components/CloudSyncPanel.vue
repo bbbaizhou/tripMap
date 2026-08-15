@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useAuthStore } from '../stores/authStore'
+import { pullCloudAndApply } from '../utils/cloudPull'
 import { getLastSyncedAt, getLastSyncError, getSyncQueue, getSyncStatus, syncNow, type SyncStatus } from '../utils/syncService'
 
 const auth = useAuthStore()
@@ -49,6 +50,13 @@ const handleSync = async () => {
   }
   busy.value = true
   await syncNow()
+  refresh()
+  busy.value = false
+}
+const handlePull = async () => {
+  if (!auth.isLoggedIn) return // 防御兜底：未登录态按钮已隐藏
+  busy.value = true
+  await pullCloudAndApply()
   refresh()
   busy.value = false
 }
@@ -115,13 +123,22 @@ onBeforeUnmount(() => {
     <div class="action-desc">上次同步：{{ lastSyncText }}</div>
     <div v-if="displayStatus === 'error' && lastSyncError" class="sync-error">{{ lastSyncError }}</div>
     <div class="sync-user">当前账号：{{ auth.user?.email }}</div>
-    <button
-      class="action-btn sync-btn"
-      :disabled="busy || status === 'syncing'"
-      @click="handleSync"
-    >
-      {{ busy || status === 'syncing' ? '同步中…' : '立即同步' }}
-    </button>
+    <div class="sync-actions">
+      <button
+        class="action-btn sync-btn"
+        :disabled="busy || status === 'syncing'"
+        @click="handleSync"
+      >
+        {{ busy || status === 'syncing' ? '同步中…' : '立即同步' }}
+      </button>
+      <button
+        class="action-btn sync-btn"
+        :disabled="busy || status === 'syncing'"
+        @click="handlePull"
+      >
+        {{ busy || status === 'syncing' ? '同步中…' : '立即拉取' }}
+      </button>
+    </div>
   </div>
 </template>
 
@@ -151,6 +168,7 @@ onBeforeUnmount(() => {
 .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .sync-btn { background: var(--color-primary-light); color: #fff; }
 .sync-btn:hover:not(:disabled) { background: var(--color-primary); }
+.sync-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
 .guide-steps { margin: 6px 0 0; padding-left: 20px; }
 .guide-steps li { margin-bottom: 4px; }

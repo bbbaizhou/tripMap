@@ -1,13 +1,19 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import type { TravelMemory } from '../types'
-import { loadState, patchState } from '../utils/storage'
+import { loadState, loadStateDetailed, patchState } from '../utils/storage'
 
 export const useMemoryStore = defineStore('memory', () => {
   const memories = ref<TravelMemory[]>([])
 
   const init = () => {
     const state = loadState()
+    memories.value = state.memories
+  }
+
+  /** 从 localStorage 重载本数组（拉取写回用）：内容相同 diff 零入队；内容不同由抑制标志兜底，杜绝回推。 */
+  const reloadFromStorage = () => {
+    const { state } = loadStateDetailed()
     memories.value = state.memories
   }
 
@@ -51,6 +57,7 @@ export const useMemoryStore = defineStore('memory', () => {
   return {
     memories,
     init,
+    reloadFromStorage,
     groupedByYear,
     addMemory,
     updateMemory,
