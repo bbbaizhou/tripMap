@@ -46,6 +46,30 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '编辑回忆 - 旅行足迹' }
   },
   {
+    path: '/ai',
+    name: 'AiHome',
+    component: () => import('../views/AiHomeView.vue'),
+    meta: { title: 'AI 旅行助手 - 旅行足迹' }
+  },
+  {
+    path: '/ai/plan',
+    name: 'AiPlan',
+    component: () => import('../views/AiPlanView.vue'),
+    meta: { title: 'AI 行程规划 - 旅行足迹' }
+  },
+  {
+    path: '/ai/insights',
+    name: 'AiInsights',
+    component: () => import('../views/AiInsightsView.vue'),
+    meta: { title: '足迹数据洞察 - 旅行足迹' }
+  },
+  {
+    path: '/ai/organize',
+    name: 'AiOrganize',
+    component: () => import('../views/AiOrganizeView.vue'),
+    meta: { title: 'AI 智能整理 - 旅行足迹' }
+  },
+  {
     path: '/manage',
     name: 'DataManage',
     component: () => import('../views/DataManageView.vue'),

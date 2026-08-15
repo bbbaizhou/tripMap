@@ -6,6 +6,7 @@
       <RouterLink to="/map">地图</RouterLink>
       <RouterLink to="/scenic">景点</RouterLink>
       <RouterLink to="/memories">回忆</RouterLink>
+      <RouterLink to="/ai">AI 助手</RouterLink>
       <RouterLink to="/manage">管理</RouterLink>
     </nav>
   </header>
