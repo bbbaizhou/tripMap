@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
+import CloudSyncPanel from '../components/CloudSyncPanel.vue'
 import DataExportImport from '../components/DataExportImport.vue'
 import { useFootprintStore } from '../stores/footprintStore'
 import { useScenicStore } from '../stores/scenicStore'
@@ -141,6 +142,7 @@ const addScenic = () => {
 
     <!-- 备份恢复 -->
     <div v-if="activeTab === 'data'" class="tab-content">
+      <CloudSyncPanel />
       <DataExportImport />
     </div>
 

@@ -103,4 +103,7 @@ export function patchState<K extends keyof AppState>(key: K, value: AppState[K])
   if (source === 'quarantined') return
   state[key] = value
   saveState(state)
+  // TODO(Phase 4.2 云同步)：store 写入口挂钩点 —— 三个 store 的写操作最终都经 patchState 落盘，
+  // 未来在此追加 enqueueChange({ entity: 对应数组名, action: 'upsert', entityId, payload })
+  // 即可让每次落盘变更同时进入同步队列（store 签名与 storage.ts 签名均不改动）。
 }
