@@ -142,6 +142,7 @@ const addScenic = () => {
 
     <!-- 备份恢复 -->
     <div v-if="activeTab === 'data'" class="tab-content">
+      <div class="cloud-hint">云同步需先登录，且需已在 Supabase 执行 docs/supabase_schema.sql 建表</div>
       <CloudSyncPanel />
       <DataExportImport />
     </div>
@@ -222,6 +223,15 @@ const addScenic = () => {
 .tab:hover { background: #f0f7f0; }
 
 .tab-content { max-width: 860px; }
+
+.cloud-hint {
+  margin-bottom: 14px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background: var(--color-primary-lighter);
+  border-radius: var(--radius-md);
+}
 
 .form-error { background: #fef2f2; color: #dc2626; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 14px; }
 .form-success { background: #f0fdf4; color: #15803d; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 14px; }

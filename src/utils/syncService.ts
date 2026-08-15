@@ -1,12 +1,14 @@
 import { getSupabase, isSupabaseConfigured } from './supabase'
 
 /**
- * local-first 同步服务骨架（Phase 4.2 之前的占位实现）。
+ * local-first 同步服务（Phase 4.2 激活：真实推送 + 登录前置检查）。
  *
  * - 队列与元数据使用独立 localStorage key（travel_footprint_sync_*），
  *   与数据 key（travel_footprint_data / *_corrupted）完全隔离；
  *   队列损坏只重置队列，不进 QUARANTINE 隔离区（storage.ts 零改动）。
- * - 未配置 / 离线 / 队列空 / dry-run 四类路径均不抛错、不发任何网络请求。
+ * - 未配置 / 离线 / 队列空 / 未登录 四类路径均不抛错、不发任何网络写请求。
+ * - 真实推送失败 = all-or-nothing：任一实体失败整队列保留（upsert 幂等，重试可重放）。
+ * - utils 层零耦合：登录检查直接用 getSupabase()?.auth.getSession()，不 import authStore。
  */
 
 export type SyncEntity = 'cities' | 'spots' | 'memories' // 对应 AppState 三个数组
@@ -22,7 +24,7 @@ export interface SyncQueueItem {
   updatedAt: string // ISO 8601（与 TravelMemory.updatedAt 同格式）
 }
 
-export type SyncStatus = 'disabled' | 'idle' | 'syncing' | 'offline' | 'error'
+export type SyncStatus = 'disabled' | 'idle' | 'syncing' | 'offline' | 'error' | 'needsLogin'
 
 export interface SyncMeta {
   lastSyncedAt: string | null
@@ -32,11 +34,11 @@ const QUEUE_KEY = 'travel_footprint_sync_queue'
 const META_KEY = 'travel_footprint_sync_meta'
 const QUEUE_LIMIT = 500
 
-/** 4.2 建表 + RLS 就绪后改为 false 并补全下方实现（见 syncNow）。 */
-const SYNC_DRY_RUN = true
-
 // 初始状态跟随配置：未配置 → disabled；已配置 → idle；由 syncNow 更新。
 let currentStatus: SyncStatus = isSupabaseConfigured() ? 'idle' : 'disabled'
+
+// 最近一次推送失败原因（面板 error 态展示；成功/未推送过为 null）。
+let lastError: string | null = null
 
 function generateId(item: Omit<SyncQueueItem, 'id' | 'updatedAt'>): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -94,7 +96,7 @@ function writeQueue(queue: SyncQueueItem[]): void {
   }
 }
 
-/** 读元数据：损坏 / 缺失一律视为 null（写入点留给 4.2）。 */
+/** 读元数据：损坏 / 缺失一律视为 null。 */
 function readMeta(): SyncMeta {
   try {
     const raw = localStorage.getItem(META_KEY)
@@ -107,6 +109,29 @@ function readMeta(): SyncMeta {
   } catch {
     return { lastSyncedAt: null }
   }
+}
+
+/** 写元数据：失败仅 console.warn，不抛错。 */
+function writeMeta(meta: SyncMeta): void {
+  try {
+    localStorage.setItem(META_KEY, JSON.stringify(meta))
+  } catch (err) {
+    console.warn('[sync] 同步元数据写入失败', err)
+  }
+}
+
+/** 把推送异常归纳为面板可读原因：RLS / 表不存在场景给出建表提示。 */
+function describeError(err: unknown): string {
+  const e = err as { message?: string; code?: string; status?: number } | null
+  const message = e?.message ?? String(err)
+  const code = e?.code ?? ''
+  const looksLikeSchemaIssue =
+    /PGRST205|42P01|42501/i.test(code) ||
+    /does not exist|row-level security|permission denied/i.test(message) ||
+    e?.status === 403
+  if (looksLikeSchemaIssue) return '同步失败：请确认已在 Supabase 执行 docs/supabase_schema.sql 建表'
+  const reason = message.trim()
+  return reason ? `同步失败：${reason}` : '同步失败，请稍后重试'
 }
 
 /**
@@ -136,10 +161,13 @@ export function clearSyncQueue(): void {
 
 /**
  * syncNow 行为矩阵（全程不 throw）：
- * - 未配置（getSupabase() === null）→ 置 disabled、返回 false，不发请求；
- * - 离线（navigator.onLine === false）→ 置 offline、返回 false；
- * - 队列空 → 置 idle、返回 true；
- * - 其余 → 置 syncing，走 3.5 dry-run 骨架，结束置回 idle/error 并返回结果。
+ * 1. 未配置（getSupabase() === null）→ disabled，false，不发请求；
+ * 2. 离线（navigator.onLine === false）→ offline，false；
+ * 3. 队列空 → idle，true（空队列无需登录）；
+ * 4. auth.getSession() 无 session → needsLogin，false（不推送、队列原样、不发写请求）；
+ * 5. syncing → 真实批量推送（upsert/delete 按 entity 分组）→ 全部成功：
+ *    clearSyncQueue() + 写 lastSyncedAt → idle，true；
+ * 6. 任一实体失败（异常 / RLS 拒绝 / 断网）→ 保留整队列 → error，false，lastError 记录原因。
  */
 export async function syncNow(): Promise<boolean> {
   try {
@@ -157,52 +185,43 @@ export async function syncNow(): Promise<boolean> {
       return true
     }
 
-    currentStatus = 'syncing'
-
-    if (SYNC_DRY_RUN) {
-      // ---- 3.5 dry-run 骨架（本轮激活路径）----
-      // 当前行为：console.info 打印按 entity 分组的待推清单，不修改队列、
-      // 返回 false、状态置 'idle'。绝不清空队列。
-      logPendingQueue(queue)
-      currentStatus = 'idle'
-      return false // dry-run 未真正推送，返回 false
+    // 登录前置检查（utils 层独立，不依赖 authStore，避免循环依赖）
+    const client = getSupabase()!
+    const sessionRes = await client.auth.getSession()
+    if (!sessionRes?.data?.session) {
+      currentStatus = 'needsLogin'
+      return false
     }
 
-    // ---- 真实批量推送（本轮不可达：SYNC_DRY_RUN = true）----
-    // TODO(4.2 激活)：SYNC_DRY_RUN 置 false 后补全下方实现
-    //   const client = getSupabase()
-    //   for (const entity of ['cities', 'spots', 'memories'] as const) {
-    //     const items = queue.filter((i) => i.entity === entity)
-    //     if (items.length === 0) continue
-    //     await client.from(entity).upsert(items
-    //       .filter((i) => i.action === 'upsert')
-    //       .map((i) => ({ id: i.entityId, payload: i.payload, updated_at: i.updatedAt })))
-    //     const deleteIds = items.filter((i) => i.action === 'delete').map((i) => i.entityId)
-    //     if (deleteIds.length > 0) await client.from(entity).delete().in('id', deleteIds)
-    //   }
-    //   全部成功后：clearSyncQueue() + 写 meta.lastSyncedAt
-    currentStatus = 'idle'
-    return false
+    currentStatus = 'syncing'
+    try {
+      for (const entity of ['cities', 'spots', 'memories'] as const) {
+        const items = queue.filter((i) => i.entity === entity)
+        if (items.length === 0) continue
+        const upserts = items
+          .filter((i) => i.action === 'upsert')
+          .map((i) => ({ id: i.entityId, payload: i.payload ?? {}, updated_at: i.updatedAt }))
+        if (upserts.length > 0) await client.from(entity).upsert(upserts)
+        const deleteIds = items.filter((i) => i.action === 'delete').map((i) => i.entityId)
+        if (deleteIds.length > 0) await client.from(entity).delete().in('id', deleteIds)
+      }
+      // 全部成功才清队列（all-or-nothing）+ 写 lastSyncedAt
+      clearSyncQueue()
+      writeMeta({ lastSyncedAt: new Date().toISOString() })
+      lastError = null
+      currentStatus = 'idle'
+      return true
+    } catch (err) {
+      console.warn('[sync] 同步推送失败，队列已保留', err)
+      lastError = describeError(err)
+      currentStatus = 'error'
+      return false
+    }
   } catch (err) {
     console.warn('[sync] syncNow 异常（已安全降级为 error）', err)
+    lastError = describeError(err)
     currentStatus = 'error'
     return false
-  }
-}
-
-/** dry-run 辅助：按 entity 分组打印待推清单。 */
-function logPendingQueue(queue: SyncQueueItem[]): void {
-  const byEntity: Record<SyncEntity, SyncQueueItem[]> = { cities: [], spots: [], memories: [] }
-  for (const item of queue) byEntity[item.entity].push(item)
-  for (const entity of ['cities', 'spots', 'memories'] as const) {
-    const items = byEntity[entity]
-    if (items.length === 0) continue
-    const upserts = items.filter((i) => i.action === 'upsert').length
-    const deletes = items.filter((i) => i.action === 'delete').length
-    console.info(`[sync:dry-run] ${entity}：upsert ${upserts} 条 / delete ${deletes} 条`)
-    for (const item of items) {
-      console.info(`[sync:dry-run]   ${item.action} ${item.entityId} @${item.updatedAt}`)
-    }
   }
 }
 
@@ -210,7 +229,11 @@ export function getSyncStatus(): SyncStatus {
   return currentStatus
 }
 
-/** 本轮恒 null（写入点留给 4.2 真正推送成功后）。 */
 export function getLastSyncedAt(): string | null {
   return readMeta().lastSyncedAt
+}
+
+/** 最近一次推送失败原因（无失败/已成功恢复 → null）。 */
+export function getLastSyncError(): string | null {
+  return lastError
 }

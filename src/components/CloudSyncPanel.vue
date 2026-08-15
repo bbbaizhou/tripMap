@@ -1,19 +1,27 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { getLastSyncedAt, getSyncQueue, getSyncStatus, syncNow, type SyncStatus } from '../utils/syncService'
+import { useAuthStore } from '../stores/authStore'
+import { getLastSyncedAt, getLastSyncError, getSyncQueue, getSyncStatus, syncNow, type SyncStatus } from '../utils/syncService'
+
+const auth = useAuthStore()
 
 const status = ref<SyncStatus>(getSyncStatus())
 const lastSyncedAt = ref(getLastSyncedAt())
+const lastSyncError = ref(getLastSyncError())
 const busy = ref(false)
 
 // 网络在线状态（navigator 访问带守卫，与 syncService 同风格）
 const online = ref(typeof navigator !== 'undefined' ? navigator.onLine : true)
 
-// 唯一展示出口：disabled 优先 > 离线覆盖 > 服务态；在线时把残留 offline 映射回 idle（修复粘滞）
+// 唯一展示出口：disabled 优先 > 离线覆盖 > 已登录粘滞修复 > 服务态。
+// 在线时把残留 offline 映射回 idle（修复粘滞）；已登录时把登录前残留的
+// needsLogin 映射回 idle（登录后不再提示「请先登录」）。
 const displayStatus = computed<SyncStatus>(() => {
   if (status.value === 'disabled') return 'disabled' // 未配置不随网络变
   if (!online.value) return 'offline' // 离线覆盖 idle/error/syncing
-  return status.value === 'offline' ? 'idle' : status.value // 在线时不再粘滞 offline
+  if (status.value === 'offline') return 'idle' // 在线时不再粘滞 offline
+  if (auth.isLoggedIn && status.value === 'needsLogin') return 'idle' // 已登录不再粘滞 needsLogin
+  return status.value
 })
 
 const STATUS_LABELS: Record<SyncStatus, string> = {
@@ -22,6 +30,7 @@ const STATUS_LABELS: Record<SyncStatus, string> = {
   syncing: '同步中…',
   offline: '离线',
   error: '同步异常',
+  needsLogin: '请先登录',
 }
 
 const statusLabel = computed(() => STATUS_LABELS[displayStatus.value])
@@ -31,8 +40,13 @@ const pendingCount = computed(() => getSyncQueue().length)
 const refresh = () => {
   status.value = getSyncStatus()
   lastSyncedAt.value = getLastSyncedAt()
+  lastSyncError.value = getLastSyncError()
 }
 const handleSync = async () => {
+  if (!auth.isLoggedIn) {
+    auth.openAuthPanel() // 防御兜底：未登录态按钮已隐藏，此处避免误触发推送
+    return
+  }
   busy.value = true
   await syncNow()
   refresh()
@@ -71,19 +85,36 @@ onBeforeUnmount(() => {
         <li>登录 <code>supabase.com</code> 新建项目（Free 套餐即可，无需支付）；</li>
         <li>左侧菜单 Project Settings → API，复制 Project URL 与 anon / public key；</li>
         <li>将项目根目录的 <code>.env.example</code> 复制为 <code>.env</code>，填入上面两项；</li>
-        <li>重启 <code>npm run dev</code>，回到本页即可看到同步入口。</li>
+        <li>重启 <code>npm run dev</code>，回到本页即可看到同步入口；</li>
+        <li>在 Supabase SQL Editor 执行 <code>docs/supabase_schema.sql</code> 建表；</li>
+        <li>首次同步前需先登录。</li>
       </ol>
       <strong class="local-safe">当前数据仍安全保存在本机，不影响任何功能。</strong>
     </div>
   </div>
 
-  <!-- 已配置：状态徽标 + 待同步条数 + 立即同步按钮（dry-run 骨架） -->
+  <!-- 已配置、未登录：请先登录卡 -->
+  <div v-else-if="!auth.isLoggedIn" class="action-card sync-card">
+    <div class="action-icon">🔐</div>
+    <div class="action-title">请先登录</div>
+    <div class="action-desc">
+      云同步需要登录账号。
+      <template v-if="pendingCount > 0">当前有 {{ pendingCount }} 条变更待同步，登录后即可推送到云端。</template>
+      <template v-else>登录后即可将数据备份到云端。</template>
+      <div class="sync-hint">另请确认已在 Supabase 执行 <code>docs/supabase_schema.sql</code> 建表。</div>
+    </div>
+    <button class="action-btn sync-btn" @click="auth.openAuthPanel()">登录</button>
+  </div>
+
+  <!-- 已配置、已登录：同步 UI + 用户邮箱 -->
   <div v-else class="action-card sync-card">
     <div class="sync-head">
       <span class="status-badge" :class="displayStatus">{{ statusLabel }}</span>
       <span class="pending-hint">待同步 {{ pendingCount }} 条</span>
     </div>
     <div class="action-desc">上次同步：{{ lastSyncText }}</div>
+    <div v-if="displayStatus === 'error' && lastSyncError" class="sync-error">{{ lastSyncError }}</div>
+    <div class="sync-user">当前账号：{{ auth.user?.email }}</div>
     <button
       class="action-btn sync-btn"
       :disabled="busy || status === 'syncing'"
@@ -131,6 +162,14 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 .local-safe { color: var(--color-primary); }
+.sync-hint { margin-top: 8px; font-size: 12px; color: var(--color-text-secondary); }
+.sync-hint code {
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-lighter);
+  color: var(--color-primary);
+  font-size: 12px;
+}
 
 .sync-head { display: flex; align-items: center; gap: 10px; }
 .status-badge {
@@ -147,7 +186,8 @@ onBeforeUnmount(() => {
   color: var(--color-accent-blue);
   background: color-mix(in srgb, var(--color-accent-blue) 12%, var(--color-surface));
 }
-.status-badge.offline {
+.status-badge.offline,
+.status-badge.needsLogin {
   color: var(--color-text-secondary);
   background: color-mix(in srgb, var(--color-text-secondary) 12%, var(--color-surface));
 }
@@ -156,4 +196,12 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
 }
 .pending-hint { font-size: 13px; color: var(--color-text-secondary); }
+.sync-error {
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
+  color: var(--color-accent);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+.sync-user { font-size: 12px; color: var(--color-text-secondary); }
 </style>

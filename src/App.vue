@@ -6,6 +6,7 @@
     </main>
     <AppNav />
     <InstallPrompt />
+    <AuthPanel />
   </div>
 </template>
 
@@ -13,6 +14,7 @@
 import AppHeader from './components/AppHeader.vue'
 import AppNav from './components/AppNav.vue'
 import InstallPrompt from './components/InstallPrompt.vue'
+import AuthPanel from './components/AuthPanel.vue'
 </script>
 
 <style scoped>
