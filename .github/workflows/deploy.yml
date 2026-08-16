@@ -31,6 +31,10 @@ jobs:
       - name: Build
         run: npm run build
 
+      # GitHub Pages 无 SPA fallback：复制 index.html 为 404.html，深链（/map、/scenic 等）刷新不 404
+      - name: Create 404.html for SPA deep links
+        run: cp dist/index.html dist/404.html
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
