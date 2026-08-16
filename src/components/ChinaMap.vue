@@ -109,27 +109,13 @@ const isMobileViewport = (): boolean => window.matchMedia('(max-width: 768px)').
 
 const getFitPadding = (): L.PointTuple => (isMobileViewport() ? [12, 12] : [20, 20])
 
-/** 移动端兜底：fitBounds 后若 zoom 超出 6 则压回 6（setMaxZoom 已约束，此处防御性兜底）。 */
-const clampMobileZoom = () => {
-  if (!map || !isMobileViewport()) return
-  if (map.getZoom() > 6) map.setZoom(6)
-}
-
 /** 计算 bounds 在 padding 约束下可用的目标 zoom（供城市/全境 fit 决策与兜底比较）。 */
 const computeFitZoom = (bounds: L.LatLngBounds): number => {
   if (!map) return 0
   return map.getBoundsZoom(bounds, false, L.point(getFitPadding()))
 }
 
-/** 中国大陆 bounds（不含南海诸岛）：[西经, 南纬, 东经, 北纬]。
- *  移动端窄框下 fit 完整 bounds（含南海十段线）会使大陆主体缩小且横向溢出，
- *  故移动端用大陆 bounds 让主体填满显示框；桌面用完整 bounds（geoLayer.getBounds()）。 */
-const CHINA_MAINLAND_BOUNDS: L.LatLngBoundsExpression = [
-  [18.0, 73.5],
-  [53.6, 135.1],
-]
-
-/** 中国全境完整入框：移动端用大陆 bounds + 显式 zoom 3（392×367 窄框实测最优：
+/** 中国全境完整入框：移动端用显式 zoom 3（392×367 窄框实测最优：
  *  横向 21~372 居中、纵向路径高 343px ≈ 框 367px；fitBounds 依赖容器时序易算出偏大 zoom
  *  导致溢出）。桌面用完整 bounds 的 fitBounds（含南海诸岛）。 */
 const fitChinaBounds = (geoLayer: L.GeoJSON) => {
