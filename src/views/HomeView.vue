@@ -103,13 +103,16 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
 .home-view { padding: 24px; }
 
 .hero {
-  background: radial-gradient(1100px 520px at 82% -12%, var(--color-natgeo-glow), transparent 62%),
-    radial-gradient(860px 480px at 8% 112%, rgba(76, 175, 80, 0.28), transparent 58%),
-    linear-gradient(162deg, var(--color-forest-900) 0%, var(--color-forest-700) 48%, var(--color-forest-500) 100%);
+  /* 晨光山野：暖黄晨光（右上）+ 前景绿（左下）+ 山野雾感（中）+ 蓝绿自然深底 */
+  background:
+    radial-gradient(1000px 520px at 80% -10%, rgba(255, 204, 0, 0.20), transparent 60%),
+    radial-gradient(760px 420px at 10% 115%, rgba(76, 175, 80, 0.20), transparent 55%),
+    radial-gradient(1200px 600px at 50% 30%, rgba(96, 181, 130, 0.10), transparent 70%),
+    linear-gradient(166deg, #0d2a1d 0%, #123a26 40%, #1d5f34 100%);
   border-radius: 20px;
   padding: 40px 48px;
   margin-bottom: 28px;
-  color: #fff;
+  color: #faf6ec;
   position: relative;
   overflow: hidden;
 }
@@ -154,7 +157,7 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
 
 .hero-content { position: relative; z-index: 1; max-width: 600px; }
 .hero-label {
-  color: var(--color-natgeo);
+  color: #ffd75e; /* 晨光黄，比纯 #FFCC00 更柔和，与深底更协调 */
   font-size: 13px;
   font-weight: 700;
   letter-spacing: var(--letter-spacing-eyebrow);
@@ -167,7 +170,7 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
   display: inline-block;
   width: 24px;
   height: 2px;
-  background: var(--color-natgeo);
+  background: #ffd75e;
   vertical-align: middle;
   margin-right: 10px;
 }
@@ -178,13 +181,16 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
   line-height: var(--line-height-display);
   letter-spacing: 0.5px;
   margin: 0 0 8px;
+  color: #fdf9ef; /* 暖白标题，衬线质感 */
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35); /* 柔和投影增强与背景层次 */
 }
 .hero-tagline {
   font-size: 18px;
   font-weight: 400;
   letter-spacing: 1px;
-  opacity: 0.8;
+  opacity: 0.9;
   margin: 0 0 20px;
+  color: #e8e2d4; /* 暖灰白副题 */
 }
 .hero-sub {
   display: flex;
@@ -198,8 +204,8 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
 }
 .stat-pill {
   display: inline-block;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--color-natgeo-glow);
+  background: rgba(253, 249, 239, 0.08); /* 暖白半透明底 */
+  border: 1px solid rgba(255, 215, 94, 0.4);
   border-radius: 999px;
   padding: 4px 12px;
   white-space: nowrap;
@@ -207,7 +213,7 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
 .stat-pill strong {
   font-family: var(--font-display);
   font-size: 22px;
-  color: var(--color-natgeo);
+  color: #ffd75e;
   margin: 0 2px;
 }
 .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -217,12 +223,12 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
   transition: transform 200ms ease, opacity 200ms ease, background 200ms ease, border-color 200ms ease;
 }
 .hero-btn:hover { transform: translateY(-2px); opacity: 0.92; }
-.hero-btn.primary { background: var(--color-natgeo); color: var(--color-forest-900); border: none; }
+.hero-btn.primary { background: var(--color-natgeo); color: #1d2f1e; border: none; }
 .hero-btn.primary:hover { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18); }
-.hero-btn.secondary { background: rgba(255, 255, 255, 0.2); color: #fff; border: 1px solid rgba(255, 255, 255, 0.55); }
-.hero-btn.secondary:hover { background: rgba(255, 255, 255, 0.28); border-color: var(--color-natgeo); }
-.hero-btn.outline { background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.55); }
-.hero-btn.outline:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--color-natgeo); }
+.hero-btn.secondary { background: rgba(253, 249, 239, 0.14); color: #fdf9ef; border: 1px solid rgba(253, 249, 239, 0.5); }
+.hero-btn.secondary:hover { background: rgba(253, 249, 239, 0.22); border-color: #ffd75e; }
+.hero-btn.outline { background: transparent; color: #fdf9ef; border: 1px solid rgba(253, 249, 239, 0.5); }
+.hero-btn.outline:hover { background: rgba(253, 249, 239, 0.1); border-color: #ffd75e; }
 
 .section-header { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 28px; margin-bottom: 8px; }
 .section-header .section-head { margin: 0; }
