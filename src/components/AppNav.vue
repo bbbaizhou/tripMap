@@ -19,6 +19,10 @@
       <span class="nav-icon">📖</span>
       <span class="nav-label">回忆</span>
     </RouterLink>
+    <RouterLink to="/ai" class="nav-item" active-class="active">
+      <span class="nav-icon">🤖</span>
+      <span class="nav-label">AI</span>
+    </RouterLink>
     <RouterLink to="/manage" class="nav-item" active-class="active">
       <span class="nav-icon">⚙️</span>
       <span class="nav-label">管理</span>
@@ -47,7 +51,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 1px;
   text-decoration: none;
   color: #9ca3af;
   padding: 8px 0;
@@ -71,7 +75,7 @@
 .nav-item.active .nav-label {
   font-weight: 700;
 }
-.nav-icon { font-size: 20px; line-height: 1; }
+.nav-icon { font-size: 18px; line-height: 1; }
 .nav-label { font-size: 10px; font-weight: 600; }
 
 @media (max-width: 768px) {
