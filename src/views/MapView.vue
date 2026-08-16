@@ -189,4 +189,60 @@ const visitedScenicCount = computed(() => scenicStore.visitedSpots.length)
   flex: 1;
   min-width: 0;
 }
+
+/* ===== 移动端适配（≤768px）：筛选栏折叠为横向滚动胶囊条，地图全宽 ===== */
+@media (max-width: 768px) {
+  .map-view {
+    padding: 12px 0;
+  }
+
+  .map-header {
+    padding: 0 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .map-stats {
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 13px;
+  }
+
+  .map-body {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .filter-panel {
+    width: 100%;
+    box-sizing: border-box; /* content-box + width:100% + padding 会撑破视口（400px>390） */
+    flex-direction: row;
+    gap: 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 12px;
+    flex-shrink: 0;
+  }
+
+  .filter-section {
+    flex: 0 0 auto;
+    min-width: 128px;
+  }
+
+  .filter-result {
+    flex: 0 0 auto;
+  }
+
+  .map-main {
+    width: 100%;
+    flex: none;
+  }
+
+  /* P2-1A：胶囊高度 + P2-3：16px 防 iOS 聚焦缩放 */
+  .filter-select {
+    min-height: 40px;
+    font-size: 16px;
+  }
+}
 </style>

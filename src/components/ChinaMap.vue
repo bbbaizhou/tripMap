@@ -22,6 +22,15 @@ const geoSourceText = ref<'本地离线数据' | '在线数据' | ''>('')
 let map: L.Map | null = null
 let cityMarkersLayer: L.LayerGroup | null = null
 
+// P0-2：视口尺寸变化（resize / 旋转）后重算地图尺寸，防瓦片偏移（仅尺寸重算，不改业务逻辑）
+let resizeDebounceTimer: number | undefined
+const handleViewportChange = () => {
+  window.clearTimeout(resizeDebounceTimer)
+  resizeDebounceTimer = window.setTimeout(() => {
+    map?.invalidateSize()
+  }, 300)
+}
+
 const visitedProvinces = computed(() =>
   new Set(footprintStore.visitedCities.map(c => c.province))
 )
@@ -125,9 +134,15 @@ onMounted(async () => {
 
   renderCityMarkers()
   setTimeout(() => map?.invalidateSize(), 0)
+
+  window.addEventListener('resize', handleViewportChange)
+  window.addEventListener('orientationchange', handleViewportChange)
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleViewportChange)
+  window.removeEventListener('orientationchange', handleViewportChange)
+  window.clearTimeout(resizeDebounceTimer)
   map?.remove()
   map = null
   cityMarkersLayer = null
@@ -155,6 +170,13 @@ watch(() => props.highlightCities, renderCityMarkers, { deep: true })
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid #cbd5e1;
+}
+
+/* P0-2：移动端地图高度 55vh（!important 覆盖内联 height prop） */
+@media (max-width: 768px) {
+  .china-map-wrapper {
+    height: 55vh !important;
+  }
 }
 
 .map-container {

@@ -266,4 +266,17 @@ const addScenic = () => {
   padding: 4px 10px; background: #e8f5e9; color: #2e7d32;
   border-radius: 999px; font-size: 13px; font-weight: 500;
 }
+
+/* ===== 移动端适配（≤768px）：表单降列、页签换行 ===== */
+@media (max-width: 768px) {
+  .manage-view { padding: 16px; }
+  .form-grid { grid-template-columns: 1fr; gap: 12px; }
+  .full-width { grid-column: auto; }
+  .tab-bar { flex-wrap: wrap; gap: 6px; }
+  .tab { padding: 8px 14px; font-size: 13px; }
+  /* P2-2：主操作按钮触控目标 ≥44px */
+  .submit-btn { min-height: 44px; }
+  /* P2-3：16px 防 iOS 聚焦缩放 */
+  .fi { font-size: 16px; }
+}
 </style>

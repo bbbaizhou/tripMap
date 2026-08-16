@@ -602,5 +602,21 @@ const copyMarkdown = async () => {
     flex-direction: column;
     align-items: stretch;
   }
+
+  /* P2-2：主操作按钮触控目标 ≥44px */
+  .submit-btn {
+    min-height: 44px;
+  }
+}
+
+/* P1-8：窄屏下工具栏 / 反馈条换行，避免横向溢出 */
+@media (max-width: 480px) {
+  .plan-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .plan-feedback-bar {
+    flex-wrap: wrap;
+  }
 }
 </style>

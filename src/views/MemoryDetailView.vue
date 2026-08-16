@@ -189,4 +189,12 @@ const formatDate = (d: string) =>
 
 .not-found { text-align: center; padding: 80px 20px; }
 .not-found-icon { font-size: 48px; margin-bottom: 16px; }
+
+/* ===== 移动端适配（≤768px）：画廊降 2 列、标题缩小 ===== */
+@media (max-width: 768px) {
+  .detail-view { padding: 16px; }
+  .detail-title { font-size: 22px; }
+  .image-gallery { grid-template-columns: 1fr 1fr; max-height: none; }
+  .gallery-thumb { height: 140px; }
+}
 </style>

@@ -26,7 +26,7 @@ import AuthPanel from './components/AuthPanel.vue'
 }
 
 .page-container {
-  padding: 16px;
+  padding: 0;
 }
 
 /* 手机端为底部导航留出空间 */
@@ -34,5 +34,14 @@ import AuthPanel from './components/AuthPanel.vue'
   .page-container {
     padding-bottom: 76px;
   }
+}
+</style>
+
+<!-- 非 scoped：全站横向溢出兜底 + body 默认 margin 重置（G0） -->
+<style>
+html,
+body {
+  margin: 0;
+  overflow-x: hidden;
 }
 </style>

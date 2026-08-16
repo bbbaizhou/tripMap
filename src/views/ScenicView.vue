@@ -332,4 +332,19 @@ const confirmAddSpot = () => {
   border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;
 }
 .btn-confirm:hover { background: #43a047; }
+
+/* ===== 移动端适配（≤768px / ≤480px）===== */
+@media (max-width: 768px) {
+  .scenic-view { padding: 16px; }
+  .spot-grid { grid-template-columns: 1fr; gap: 12px; }
+  .dialog { padding: 20px 16px; }
+  /* P2-2：次要按钮触控目标 ≥36px */
+  .tab-btn { min-height: 36px; }
+  /* P2-3：16px 防 iOS 聚焦缩放 */
+  .filter-select { font-size: 16px; }
+}
+
+@media (max-width: 480px) {
+  .form-row { flex-direction: column; }
+}
 </style>

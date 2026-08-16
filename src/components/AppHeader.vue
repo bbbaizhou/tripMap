@@ -124,8 +124,14 @@ const handleSignOut = async () => {
 }
 
 @media (max-width: 768px) {
+  .app-header { padding: 12px 16px; }
   .nav-links {
     display: none;
   }
+}
+
+@media (max-width: 480px) {
+  .user-email { display: none; }
+  .brand { font-size: 17px; }
 }
 </style>

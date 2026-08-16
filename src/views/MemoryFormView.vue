@@ -272,4 +272,15 @@ const handleCancel = () => {
   font-weight: 600;
 }
 .btn-submit:hover { background: #43a047; }
+
+/* ===== 移动端适配（≤768px）：表单降列、操作竖排 ===== */
+@media (max-width: 768px) {
+  .form-view { padding: 16px; }
+  .form-row { flex-direction: column; }
+  .form-actions { flex-direction: column-reverse; }
+  .btn-submit { width: 100%; padding: 12px; min-height: 44px; }
+  .btn-cancel { width: 100%; }
+  /* P2-3：16px 防 iOS 聚焦缩放 */
+  .form-input { font-size: 16px; }
+}
 </style>

@@ -963,5 +963,10 @@ const toggleDesc = (id: string) => toggleId(descSelected, id)
     flex-direction: column;
     align-items: flex-start;
   }
+
+  /* P2-2：次要按钮触控目标 ≥36px */
+  .org-mini-btn {
+    min-height: 36px;
+  }
 }
 </style>

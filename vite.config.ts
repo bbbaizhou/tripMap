@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     vue(),
     VitePWA({
@@ -45,7 +45,7 @@ export default defineConfig({
       },
     }),
   ],
-  // GitHub Pages 子路径部署：用绝对路径 /tripMap/（base:'./' 在 SW navigateFallback 下
-  // 会导致 manifest/资源相对解析漂移到域根，破坏移动端「添加到主屏幕」可安装性）
-  base: '/tripMap/',
-})
+  // base 双模式：生产构建（mode=production）用 /tripMap/（GitHub Pages 子路径，保证 PWA manifest/SW 正常）；
+  // dev（mode=development）用 '/'（否则 dev 要求路由带 /tripMap/ 前缀，/map 等全部 404 → 页面空白/文字紊乱）
+  base: mode === 'production' ? '/tripMap/' : '/',
+}))

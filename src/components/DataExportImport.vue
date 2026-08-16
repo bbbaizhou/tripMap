@@ -109,4 +109,9 @@ const handleFileChange = async (e: Event) => {
 }
 .status-banner.success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
 .status-banner.error { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
+
+/* 移动端：导出/导入卡片各占整行 */
+@media (max-width: 768px) {
+  .action-row { grid-template-columns: 1fr; }
+}
 </style>

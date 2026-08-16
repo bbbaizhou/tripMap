@@ -150,4 +150,10 @@ const emit = defineEmits<{
 .btn-primary { background: #4caf50; color: #fff; }
 .btn-outline { background: transparent; border: 1px solid #3b82f6; color: #3b82f6; }
 .btn-ghost { background: transparent; border: 1px solid #e4e7ed; color: #9ca3af; font-size: 11px; }
+
+/* P2-2：触控目标（次要 ≥36px，主操作 ≥44px） */
+@media (max-width: 768px) {
+  .btn { min-height: 36px; }
+  .btn-primary { min-height: 44px; }
+}
 </style>

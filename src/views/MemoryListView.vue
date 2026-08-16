@@ -115,4 +115,9 @@ const allTags = computed(() => {
   display: inline-block; padding: 10px 24px; background: #4caf50;
   color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600;
 }
+
+/* P2-2：标签筛选 chips 触控目标 ≥36px */
+@media (max-width: 768px) {
+  .tag-chip { min-height: 36px; }
+}
 </style>

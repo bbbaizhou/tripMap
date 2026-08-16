@@ -249,9 +249,13 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
 .onboard-actions .hero-btn.outline { color: #2e7d32; border-color: #a7f3d0; }
 
 @media (max-width: 768px) {
+  .home-view { padding: 16px; }
   .hero { padding: 32px 24px; }
-  .hero-title { font-size: 28px; }
+  .hero-title { font-size: 22px; }
+  .memory-row { grid-template-columns: 1fr; gap: 12px; }
   .hero-trail,
   .hero-pin { display: none; }
+  /* P2-2：主操作按钮触控目标 ≥44px */
+  .hero-btn { min-height: 44px; }
 }
 </style>
