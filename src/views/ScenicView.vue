@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ScenicSpotCard from '../components/ScenicSpotCard.vue'
 import { useScenicStore } from '../stores/scenicStore'
+import { withEnqueueSuppressed } from '../utils/storage'
 import type { ScenicSpot } from '../types'
 
 const scenicStore = useScenicStore()
@@ -35,10 +36,13 @@ onMounted(async () => {
     const res = await fetch('/data/scenic-spots-base.json')
     const base: ScenicSpot[] = await res.json()
     const existingIds = new Set(scenicStore.spots.map(s => s.spotId))
-    base.forEach(spot => {
-      if (!existingIds.has(spot.spotId)) {
-        scenicStore.addSpot(spot)
-      }
+    // 种子合并期间抑制同步入队：公共种子库非用户私有变更，不应进入云同步队列
+    withEnqueueSuppressed(() => {
+      base.forEach(spot => {
+        if (!existingIds.has(spot.spotId)) {
+          scenicStore.addSpot(spot)
+        }
+      })
     })
   } catch {
     // 静默失败，使用 store 现有数据
