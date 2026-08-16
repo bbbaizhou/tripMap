@@ -33,7 +33,8 @@ const newSpot = ref<Partial<ScenicSpot>>({
 // 初始化：加载基础景点数据（仅加载不在 store 中的）
 onMounted(async () => {
   try {
-    const res = await fetch('/data/scenic-spots-base.json')
+    // 用 BASE_URL（生产 /tripMap/、dev /）拼接，保证 GitHub Pages 子路径下资源不 404
+    const res = await fetch(import.meta.env.BASE_URL + 'data/scenic-spots-base.json')
     const base: ScenicSpot[] = await res.json()
     const existingIds = new Set(scenicStore.spots.map(s => s.spotId))
     // 种子合并期间抑制同步入队：公共种子库非用户私有变更，不应进入云同步队列
