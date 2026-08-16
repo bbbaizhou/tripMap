@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ScenicSpotCard from '../components/ScenicSpotCard.vue'
 import { useScenicStore } from '../stores/scenicStore'
 import type { ScenicSpot } from '../types'
@@ -63,6 +63,31 @@ const filteredSpots = computed(() => {
     }
     return true
   })
+})
+
+// ===== 分页（Web 每页 30 条 / 移动端每页 10 条，断点与 CSS @media 768px 一致）=====
+const isMobileView = ref(window.matchMedia('(max-width: 768px)').matches)
+const handleViewportChange = () => {
+  isMobileView.value = window.matchMedia('(max-width: 768px)').matches
+}
+window.addEventListener('resize', handleViewportChange)
+onBeforeUnmount(() => window.removeEventListener('resize', handleViewportChange))
+
+const currentPage = ref(1)
+const pageSize = computed(() => (isMobileView.value ? 10 : 30))
+
+// 筛选变化时重置页码
+watch([filterProvince, filterLevel, filterStatus, filterKeyword], () => {
+  currentPage.value = 1
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredSpots.value.length / pageSize.value)))
+// 越界保护：数据变化后页码超界则回退
+watch(totalPages, (tp) => { if (currentPage.value > tp) currentPage.value = tp })
+
+const pagedSpots = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredSpots.value.slice(start, start + pageSize.value)
 })
 
 // 统计
@@ -166,7 +191,7 @@ const confirmAddSpot = () => {
     <!-- 景点网格 -->
     <div v-if="filteredSpots.length > 0" class="spot-grid">
       <ScenicSpotCard
-        v-for="spot in filteredSpots"
+        v-for="spot in pagedSpots"
         :key="spot.spotId"
         :spot="spot"
         @check-in="openCheckIn"
@@ -174,6 +199,14 @@ const confirmAddSpot = () => {
         @unmark="handleToWishlist"
       />
     </div>
+
+    <!-- 分页控件 -->
+    <div v-if="filteredSpots.length > pageSize" class="pagination">
+      <button class="page-btn" :disabled="currentPage === 1" @click="currentPage--">上一页</button>
+      <span class="page-info">{{ currentPage }} / {{ totalPages }} 页（共 {{ filteredSpots.length }} 条）</span>
+      <button class="page-btn" :disabled="currentPage === totalPages" @click="currentPage++">下一页</button>
+    </div>
+
     <div v-else class="empty-state">
       <div class="empty-icon">🗺️</div>
       <div class="empty-text">没有找到匹配的景点</div>
@@ -303,6 +336,30 @@ const confirmAddSpot = () => {
 .empty-text { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: #6b7280; }
 .empty-sub { font-size: 13px; }
 
+/* 分页 */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+.page-btn {
+  padding: 8px 18px;
+  border: 1px solid var(--color-primary-light);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 200ms ease;
+}
+.page-btn:hover:not(:disabled) { background: var(--color-primary-lighter); }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.page-info { font-size: 13px; color: var(--color-text-secondary); }
+
 /* Dialog */
 .dialog-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.45);
@@ -342,6 +399,8 @@ const confirmAddSpot = () => {
   .tab-btn { min-height: 36px; }
   /* P2-3：16px 防 iOS 聚焦缩放 */
   .filter-select { font-size: 16px; }
+  /* 分页按钮移动端触控目标 ≥40px */
+  .page-btn { min-height: 40px; }
 }
 
 @media (max-width: 480px) {
