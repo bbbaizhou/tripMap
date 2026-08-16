@@ -13,8 +13,8 @@ export default defineConfig({
         short_name: '旅行足迹',
         lang: 'zh-CN',
         description: '记录你去过的每一座城市与景点',
-        start_url: './',
-        scope: './',
+        start_url: '/tripMap/',
+        scope: '/tripMap/',
         display: 'standalone',
         background_color: '#f5f7fa',
         theme_color: '#2e7d32',
@@ -45,5 +45,7 @@ export default defineConfig({
       },
     }),
   ],
-  base: './',
+  // GitHub Pages 子路径部署：用绝对路径 /tripMap/（base:'./' 在 SW navigateFallback 下
+  // 会导致 manifest/资源相对解析漂移到域根，破坏移动端「添加到主屏幕」可安装性）
+  base: '/tripMap/',
 })
