@@ -79,7 +79,9 @@ const routes: RouteRecordRaw[] = [
 ]
 
 export const router = createRouter({
-  history: createWebHistory(),
+  // BASE_URL 来自 vite base（/tripMap/），保证 history 路由与 GitHub Pages 子路径一致，
+  // 否则默认 '/' 会把 /tripMap/ 导航规范化回根路径，破坏 manifest/PWA 安装
+  history: createWebHistory(import.meta.env.BASE_URL),
   scrollBehavior(_to, _from, savedPosition) {
     if (savedPosition) return savedPosition
     return { top: 0, behavior: 'smooth' }
