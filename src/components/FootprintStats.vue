@@ -51,9 +51,10 @@ const props = defineProps<{
   position: relative;
   background: var(--color-surface);
   border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
   padding: 18px 16px;
-  box-shadow: var(--shadow-card);
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  box-shadow: none;
+  transition: transform 200ms ease;
 }
 .stat-card::before {
   content: '';
@@ -63,16 +64,11 @@ const props = defineProps<{
   right: 0;
   height: 3px;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  background: var(--color-primary);
-  opacity: 0;
-  transition: opacity 200ms ease;
+  background: var(--color-natgeo);
+  opacity: 1;
 }
 .stat-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-}
-.stat-card:hover::before {
-  opacity: 1;
 }
 
 .stat-head {
@@ -83,7 +79,7 @@ const props = defineProps<{
 
 .stat-icon {
   flex-shrink: 0;
-  background: var(--color-primary-lighter);
+  background: var(--color-natgeo-soft);
   border-radius: 10px;
   padding: 8px;
   font-size: 18px;
@@ -97,9 +93,10 @@ const props = defineProps<{
 
 .stat-value {
   margin-top: 12px;
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--color-text-primary);
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 600;
+  color: #1f2937;
 }
 
 .unit {
@@ -112,6 +109,9 @@ const props = defineProps<{
 @media (max-width: 768px) {
   .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .stat-value {
+    font-size: 32px;
   }
 }
 </style>

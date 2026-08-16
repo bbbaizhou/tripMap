@@ -136,9 +136,34 @@ const formatDate = (d: string) =>
 .delete-btn { background: #f9fafb; color: #9ca3af; border: 1px solid #e4e7ed; }
 .delete-btn.confirm { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
 
-.detail-title { font-size: 28px; font-weight: 800; color: #1f2937; margin: 0 0 16px; }
+.detail-title {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 600;
+  line-height: var(--line-height-display);
+  color: #1f2937;
+  margin: 0 0 16px;
+}
 
-.detail-meta { display: flex; flex-wrap: wrap; gap: 14px; color: #6b7280; font-size: 14px; margin-bottom: 14px; }
+.detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  margin-bottom: 14px;
+}
+.detail-meta::before {
+  content: '';
+  display: inline-block;
+  width: 24px;
+  height: 2px;
+  background: var(--color-natgeo);
+  vertical-align: middle;
+  margin-right: 2px;
+}
 .meta-item { display: flex; align-items: center; gap: 4px; }
 
 .tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
@@ -193,7 +218,7 @@ const formatDate = (d: string) =>
 /* ===== 移动端适配（≤768px）：画廊降 2 列、标题缩小 ===== */
 @media (max-width: 768px) {
   .detail-view { padding: 16px; }
-  .detail-title { font-size: 22px; }
+  .detail-title { font-size: 24px; }
   .image-gallery { grid-template-columns: 1fr 1fr; max-height: none; }
   .gallery-thumb { height: 140px; }
 }

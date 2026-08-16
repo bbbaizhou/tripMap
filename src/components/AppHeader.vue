@@ -11,7 +11,7 @@ const handleSignOut = async () => {
 
 <template>
   <header class="app-header">
-    <div class="brand"><span class="brand-icon">🌏</span>个人旅行足迹</div>
+    <div class="brand"><span class="brand-icon">🌏</span>旅行足迹</div>
     <nav class="nav-links">
       <RouterLink to="/">首页</RouterLink>
       <RouterLink to="/map">地图</RouterLink>
@@ -51,9 +51,14 @@ const handleSignOut = async () => {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 20px;
+  font-family: var(--font-display);
+  font-size: 22px;
   font-weight: 700;
+  letter-spacing: 1px;
   color: #1f2937;
+  /* 编辑风杂志导航：右缘 2px 黄竖条 */
+  border-right: 2px solid var(--color-natgeo);
+  padding-right: 12px;
 }
 
 .brand-icon {
@@ -63,28 +68,30 @@ const handleSignOut = async () => {
 
 .nav-links {
   display: flex;
-  gap: 8px;
+  gap: 4px;
 }
 
 .nav-links a {
   text-decoration: none;
-  color: #6b7280;
-  padding: 8px 16px;
-  border-radius: 999px;
+  color: var(--color-text-primary);
+  padding: 8px 14px;
+  border-radius: 0;
   font-size: 14px;
-  transition: all 200ms ease;
+  transition: color 200ms ease, border-color 200ms ease;
 }
 
 .nav-links a:hover {
-  background: var(--color-primary-lighter);
+  background: transparent;
   color: var(--color-primary);
+  border-bottom: 2px solid var(--color-natgeo-glow);
 }
 
 .nav-links a.router-link-active,
 .nav-links a.router-link-exact-active {
-  background: var(--color-primary-lighter);
-  color: var(--color-primary);
-  font-weight: 600;
+  background: transparent;
+  color: #1f2937;
+  font-weight: 700;
+  border-bottom: 2px solid var(--color-natgeo);
 }
 
 .auth-area {

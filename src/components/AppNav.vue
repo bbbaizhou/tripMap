@@ -68,9 +68,9 @@
   left: 50%;
   transform: translateX(-50%);
   width: 24px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--color-primary);
+  height: 3px;
+  border-radius: 1px;
+  background: var(--color-natgeo);
 }
 .nav-item.active .nav-label {
   font-weight: 700;

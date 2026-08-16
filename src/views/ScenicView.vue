@@ -142,7 +142,8 @@ const confirmAddSpot = () => {
   <section class="scenic-view">
     <!-- 顶部 header -->
     <div class="scenic-header">
-      <div>
+      <div class="section-head">
+        <div class="eyebrow">SPOTS · 景点</div>
         <h2>景点打卡</h2>
         <p>管理你的 4A/5A 景点打卡记录</p>
       </div>
@@ -286,8 +287,8 @@ const confirmAddSpot = () => {
 .scenic-header {
   display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
 }
-.scenic-header h2 { margin: 0 0 4px; }
-.scenic-header p { margin: 0; font-size: 14px; color: #6b7280; }
+.scenic-header .section-head { margin: 0; }
+.scenic-header p { margin: 8px 0 0; font-size: 14px; color: #6b7280; }
 
 .add-btn {
   padding: 8px 16px; background: #4caf50; color: #fff; border: none;
@@ -300,9 +301,14 @@ const confirmAddSpot = () => {
   flex: 1; background: #fff; border: 1px solid #e4e7ed; border-radius: 12px;
   padding: 16px; text-align: center;
 }
-.stat-visited { border-color: #c8e6c9; background: #f9fffe; }
+.stat-visited { border-color: #c8e6c9; background: #f9fffe; border-top: 2px solid var(--color-natgeo); }
 .stat-wishlist { border-color: #bbdefb; background: #f0f7ff; }
-.stat-number { font-size: 28px; font-weight: 800; color: #1f2937; }
+.stat-number {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 600;
+  color: #1f2937;
+}
 .stat-label { font-size: 13px; color: #6b7280; margin-top: 4px; }
 
 .filter-bar {
@@ -320,7 +326,7 @@ const confirmAddSpot = () => {
   background: #f9fafb; font-size: 13px; cursor: pointer; color: #374151;
   transition: background 200ms ease, color 200ms ease, border-color 200ms ease;
 }
-.tab-btn.active { background: var(--color-primary-lighter); color: var(--color-primary); border-color: #c8e6c9; font-weight: 600; }
+.tab-btn.active { background: var(--color-natgeo-soft); color: var(--color-natgeo-ink); border-color: var(--color-natgeo); font-weight: 600; }
 .tab-btn:hover { background: #f0f7f0; }
 .search-input {
   padding: 7px 12px; border: 1px solid #e4e7ed; border-radius: 8px;

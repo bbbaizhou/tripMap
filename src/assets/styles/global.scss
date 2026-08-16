@@ -1,0 +1,43 @@
+/* ===== National Geographic 风格 · 章节标题眉题模式（NATGEO_UI_PLAN §4）=====
+   使用方式：<div class="section-head"><div class="eyebrow">…</div><h2>…</h2><p>…</p></div>
+   仅样式，不承载逻辑；桌面 32px / 移动 24px。 */
+
+.section-head {
+  margin: 0 0 20px;
+}
+
+.section-head .eyebrow {
+  font-size: var(--font-size-eyebrow);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-eyebrow);
+  text-transform: uppercase;
+  color: var(--color-natgeo-ink);
+  margin-bottom: 6px;
+}
+
+.section-head h2 {
+  font-family: var(--font-display);
+  font-size: var(--font-size-section);
+  font-weight: 600;
+  line-height: var(--line-height-display);
+  margin: 0;
+}
+
+/* 底部细分隔线：40px 黄 + 全宽 hairline */
+.section-head::after {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 2px;
+  background: var(--color-natgeo);
+  margin-top: 12px;
+}
+
+@media (max-width: 768px) {
+  .section-head h2 {
+    font-size: 24px;
+  }
+  .section-head .eyebrow {
+    font-size: 11px;
+  }
+}

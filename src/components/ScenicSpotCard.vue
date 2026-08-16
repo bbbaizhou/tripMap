@@ -50,16 +50,12 @@ const emit = defineEmits<{
   background: #fff;
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  box-shadow: none;
   border: 1px solid #e4e7ed;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-.spot-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  transition: transform 200ms ease, border-color 200ms ease;
 }
 .spot-card.is-visited {
   border-color: #c8e6c9;
@@ -69,6 +65,10 @@ const emit = defineEmits<{
   border-color: #bbdefb;
   background: #f0f7ff;
 }
+.spot-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-natgeo);
+}
 
 .card-top {
   display: flex;
@@ -77,8 +77,9 @@ const emit = defineEmits<{
   gap: 8px;
 }
 .spot-name {
-  font-weight: 700;
-  font-size: 15px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
   color: #1f2937;
   flex: 1;
 }
@@ -89,7 +90,7 @@ const emit = defineEmits<{
   padding: 2px 8px;
   border-radius: 4px;
 }
-.badge-5a { background: #fff3e0; color: #e65100; }
+.badge-5a { background: var(--color-natgeo-soft); color: var(--color-natgeo-ink); }
 .badge-4a { background: #e8f5e9; color: #2e7d32; }
 
 .spot-info {

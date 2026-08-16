@@ -22,7 +22,7 @@ import AuthPanel from './components/AuthPanel.vue'
   min-height: 100vh;
   background: #f5f7fa;
   color: #1f2937;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: var(--font-body);
 }
 
 .page-container {

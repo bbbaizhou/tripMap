@@ -26,7 +26,8 @@ const allTags = computed(() => {
 <template>
   <section class="memory-list-view">
     <div class="list-header">
-      <div>
+      <div class="section-head">
+        <div class="eyebrow">MEMORIES · 回忆</div>
         <h2>旅行回忆</h2>
         <p>共 {{ memoryStore.memories.length }} 段旅程</p>
       </div>
@@ -77,8 +78,8 @@ const allTags = computed(() => {
 .list-header {
   display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
 }
-.list-header h2 { margin: 0 0 4px; }
-.list-header p { margin: 0; font-size: 14px; color: #6b7280; }
+.list-header .section-head { margin: 0; }
+.list-header p { margin: 8px 0 0; font-size: 14px; color: #6b7280; }
 .new-btn {
   padding: 8px 18px; background: #4caf50; color: #fff; text-decoration: none;
   border-radius: 8px; font-weight: 600; font-size: 14px;
@@ -102,14 +103,35 @@ const allTags = computed(() => {
 .memory-list { display: flex; flex-direction: column; gap: 28px; }
 .year-group {}
 .year-label {
-  font-size: 20px; font-weight: 800; color: #1f2937;
-  margin-bottom: 14px; padding-bottom: 8px;
-  border-bottom: 2px solid #e8f5e9;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--color-natgeo-soft);
+}
+.year-label::before {
+  content: '';
+  display: inline-block;
+  width: 24px;
+  height: 2px;
+  background: var(--color-natgeo);
+  vertical-align: middle;
+  margin-right: 10px;
 }
 .memory-items { display: grid; gap: 14px; }
 
 .empty-state { text-align: center; padding: 80px 20px; color: #9ca3af; }
 .empty-icon { font-size: 48px; margin-bottom: 16px; }
+.empty-icon::after {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 2px;
+  background: var(--color-natgeo);
+  margin: 14px auto 0;
+}
 .empty-text { font-size: 16px; font-weight: 600; color: #6b7280; margin-bottom: 16px; }
 .empty-cta {
   display: inline-block; padding: 10px 24px; background: #4caf50;

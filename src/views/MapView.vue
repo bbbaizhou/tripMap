@@ -45,14 +45,15 @@ const visitedScenicCount = computed(() => scenicStore.visitedSpots.length)
 <template>
   <section class="map-view">
     <div class="map-header">
-      <div>
+      <div class="section-head">
+        <div class="eyebrow">MAP · 地图</div>
         <h2>足迹地图</h2>
         <p>已访问城市与景点在地图上的分布</p>
       </div>
       <div class="map-stats">
-        <span>{{ footprintStore.visitedCities.length }} 个城市</span>
-        <span>{{ footprintStore.getVisitedProvinces.length }} 个省份</span>
-        <span>{{ visitedScenicCount }} 个景点</span>
+        <span class="map-stat"><strong>{{ footprintStore.visitedCities.length }}</strong> 个城市</span>
+        <span class="map-stat"><strong>{{ footprintStore.getVisitedProvinces.length }}</strong> 个省份</span>
+        <span class="map-stat"><strong>{{ visitedScenicCount }}</strong> 个景点</span>
       </div>
     </div>
 
@@ -107,13 +108,12 @@ const visitedScenicCount = computed(() => scenicStore.visitedSpots.length)
   gap: 16px;
 }
 
-.map-header h2 {
-  margin: 0 0 4px;
-  font-size: 22px;
+.map-header .section-head {
+  margin: 0;
 }
 
 .map-header p {
-  margin: 0;
+  margin: 8px 0 0;
   font-size: 14px;
   color: #6b7280;
 }
@@ -125,6 +125,13 @@ const visitedScenicCount = computed(() => scenicStore.visitedSpots.length)
   color: #1f2937;
   font-size: 15px;
   flex-shrink: 0;
+}
+
+.map-stat strong {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  margin-right: 2px;
 }
 
 .map-body {
@@ -170,7 +177,7 @@ const visitedScenicCount = computed(() => scenicStore.visitedSpots.length)
 }
 
 .filter-select:focus {
-  border-color: #4caf50;
+  border-color: var(--color-natgeo);
 }
 
 .filter-result {

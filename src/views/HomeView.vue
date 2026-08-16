@@ -25,17 +25,17 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
       <svg class="hero-trail" viewBox="0 0 400 200" fill="none" aria-hidden="true" focusable="false">
         <path
           d="M8 176 C 60 40, 124 34, 162 96 C 198 152, 252 166, 296 118 C 328 82, 360 68, 392 34"
-          stroke="rgba(255,255,255,0.25)"
+          stroke="rgba(255,204,0,0.35)"
           stroke-width="2.5"
           stroke-linecap="round"
           stroke-linejoin="round"
         />
-        <circle cx="8" cy="176" r="5" fill="rgba(255,255,255,0.4)" />
-        <circle cx="86" cy="70" r="4" fill="rgba(255,255,255,0.4)" />
-        <circle cx="162" cy="96" r="5" fill="rgba(255,255,255,0.4)" />
-        <circle cx="252" cy="150" r="4" fill="rgba(255,255,255,0.4)" />
-        <circle cx="296" cy="118" r="5" fill="rgba(255,255,255,0.4)" />
-        <circle class="trail-dot-end" cx="392" cy="34" r="6" fill="rgba(255,255,255,0.65)" />
+        <circle cx="8" cy="176" r="5" fill="rgba(255,204,0,0.5)" />
+        <circle cx="86" cy="70" r="4" fill="rgba(255,204,0,0.5)" />
+        <circle cx="162" cy="96" r="5" fill="rgba(255,204,0,0.5)" />
+        <circle cx="252" cy="150" r="4" fill="rgba(255,204,0,0.5)" />
+        <circle cx="296" cy="118" r="5" fill="rgba(255,204,0,0.5)" />
+        <circle class="trail-dot-end" cx="392" cy="34" r="6" fill="#ffcc00" />
       </svg>
       <!-- 定位针装饰（角落） -->
       <svg class="hero-pin" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -63,7 +63,10 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
     </div>
 
     <!-- 统计卡片 -->
-    <div class="section-title">旅行数据</div>
+    <div class="section-head">
+      <div class="eyebrow">DATA · 数据</div>
+      <h2>旅行数据</h2>
+    </div>
     <FootprintStats
       :city-count="footprintStore.visitedCities.length"
       :spot-count="scenicStore.visitedSpots.length"
@@ -73,7 +76,10 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
 
     <!-- 近期回忆 -->
     <div v-if="recentMemories.length" class="section-header">
-      <div class="section-title">近期回忆</div>
+      <div class="section-head">
+        <div class="eyebrow">RECENT · 近期</div>
+        <h2>近期回忆</h2>
+      </div>
       <RouterLink to="/memories" class="see-all">查看全部 →</RouterLink>
     </div>
     <div v-if="recentMemories.length" class="memory-row">
@@ -97,7 +103,9 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
 .home-view { padding: 24px; }
 
 .hero {
-  background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 55%, #388e3c 100%);
+  background: radial-gradient(1100px 520px at 82% -12%, var(--color-natgeo-glow), transparent 62%),
+    radial-gradient(860px 480px at 8% 112%, rgba(76, 175, 80, 0.28), transparent 58%),
+    linear-gradient(162deg, var(--color-forest-900) 0%, var(--color-forest-700) 48%, var(--color-forest-500) 100%);
   border-radius: 20px;
   padding: 40px 48px;
   margin-bottom: 28px;
@@ -105,21 +113,13 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
   position: relative;
   overflow: hidden;
 }
+/* 内联 SVG 噪点（无外部请求） */
 .hero::before {
   content: '';
   position: absolute;
-  right: -40px; top: -40px;
-  width: 280px; height: 280px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.06);
-}
-.hero::after {
-  content: '';
-  position: absolute;
-  right: 80px; bottom: -60px;
-  width: 160px; height: 160px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.04);
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  pointer-events: none;
 }
 
 /* 足迹轨迹折线装饰 */
@@ -132,6 +132,7 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
   max-width: 380px;
   height: auto;
   pointer-events: none;
+  filter: drop-shadow(0 0 6px rgba(255, 204, 0, 0.35));
 }
 .trail-dot-end {
   animation: trail-pulse 2.6s ease-in-out infinite;
@@ -153,18 +154,36 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
 
 .hero-content { position: relative; z-index: 1; max-width: 600px; }
 .hero-label {
+  color: var(--color-natgeo);
   font-size: 13px;
-  letter-spacing: 2.5px;
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-eyebrow);
   text-transform: uppercase;
-  opacity: 0.75;
+  opacity: 1;
   margin-bottom: 12px;
 }
-.hero-title { font-size: 36px; font-weight: 800; margin: 0 0 8px; line-height: 1.2; }
+.hero-label::before {
+  content: '';
+  display: inline-block;
+  width: 24px;
+  height: 2px;
+  background: var(--color-natgeo);
+  vertical-align: middle;
+  margin-right: 10px;
+}
+.hero-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-hero);
+  font-weight: 600;
+  line-height: var(--line-height-display);
+  letter-spacing: 0.5px;
+  margin: 0 0 8px;
+}
 .hero-tagline {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 400;
   letter-spacing: 1px;
-  opacity: 0.85;
+  opacity: 0.8;
   margin: 0 0 20px;
 }
 .hero-sub {
@@ -179,51 +198,34 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
 }
 .stat-pill {
   display: inline-block;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--color-natgeo-glow);
   border-radius: 999px;
   padding: 4px 12px;
   white-space: nowrap;
 }
 .stat-pill strong {
-  font-size: 20px;
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--color-natgeo);
   margin: 0 2px;
 }
 .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 .hero-btn {
-  padding: 10px 22px; border-radius: 10px; font-size: 14px;
-  font-weight: 600; cursor: pointer; border: none;
-  transition: transform 200ms ease, opacity 200ms ease, background 200ms ease, box-shadow 200ms ease;
+  padding: 10px 22px; border-radius: 2px; font-size: 14px;
+  font-weight: 600; cursor: pointer; border: 1px solid transparent;
+  transition: transform 200ms ease, opacity 200ms ease, background 200ms ease, border-color 200ms ease;
 }
 .hero-btn:hover { transform: translateY(-2px); opacity: 0.92; }
-.hero-btn.primary { background: #fff; color: #2e7d32; }
+.hero-btn.primary { background: var(--color-natgeo); color: var(--color-forest-900); border: none; }
 .hero-btn.primary:hover { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18); }
-.hero-btn.secondary { background: rgba(255,255,255,0.2); color: #fff; }
-.hero-btn.secondary:hover { background: rgba(255,255,255,0.28); }
-.hero-btn.outline { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.55); }
-.hero-btn.outline:hover { background: rgba(255,255,255,0.08); }
+.hero-btn.secondary { background: rgba(255, 255, 255, 0.2); color: #fff; border: 1px solid rgba(255, 255, 255, 0.55); }
+.hero-btn.secondary:hover { background: rgba(255, 255, 255, 0.28); border-color: var(--color-natgeo); }
+.hero-btn.outline { background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, 0.55); }
+.hero-btn.outline:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--color-natgeo); }
 
-.section-title {
-  position: relative;
-  padding-left: 14px;
-  font-size: 18px;
-  font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 14px;
-}
-.section-title::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 16px;
-  border-radius: 2px;
-  background: #2e7d32;
-}
-.section-header { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; margin-bottom: 14px; }
-.section-header .section-title { margin-bottom: 0; }
+.section-header { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 28px; margin-bottom: 8px; }
+.section-header .section-head { margin: 0; }
 .see-all { color: #2e7d32; text-decoration: none; font-size: 14px; font-weight: 500; }
 
 .memory-row {
@@ -242,6 +244,14 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
   box-shadow: 0 6px 24px rgba(46, 125, 50, 0.08);
 }
 .onboard-icon { font-size: 72px; line-height: 1; margin-bottom: 16px; }
+.onboard-icon::after {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 2px;
+  background: var(--color-natgeo);
+  margin: 14px auto 0;
+}
 .onboarding h3 { font-size: 20px; font-weight: 700; color: #1f2937; margin: 0 0 8px; }
 .onboarding p { color: #6b7280; margin: 0 0 24px; }
 .onboard-actions { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
@@ -250,8 +260,9 @@ const totalDays = computed(() => footprintStore.visitedCities.reduce((n, c) => n
 
 @media (max-width: 768px) {
   .home-view { padding: 16px; }
-  .hero { padding: 32px 24px; }
-  .hero-title { font-size: 22px; }
+  .hero { padding: 32px 20px; }
+  .hero-title { font-size: 40px; }
+  .hero-label { font-size: 13px; }
   .memory-row { grid-template-columns: 1fr; gap: 12px; }
   .hero-trail,
   .hero-pin { display: none; }

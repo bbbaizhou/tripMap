@@ -47,4 +47,28 @@
   // 过渡
   --transition-fast: 200ms ease;
   --transition-base: 300ms ease;
+
+  // ===== National Geographic 风格扩展（追加，不改动上方现有值）=====
+  // 品牌强调（NatGeo 黄）
+  --color-natgeo: #ffcc00;
+  --color-natgeo-ink: #7a5c00; // 浅底上的黄文字（AA 达标）
+  --color-natgeo-soft: rgba(255, 204, 0, 0.15); // 浅黄填充（激活/徽标底）
+  --color-natgeo-glow: rgba(255, 204, 0, 0.35); // 深底装饰线/轨迹
+
+  // 深色摄影系（Hero 用）
+  --color-forest-900: #0b1f14; // 深绿黑
+  --color-forest-700: #123a22;
+  --color-forest-500: #1b5e20;
+
+  // 字体族（纯系统栈，无外部加载）
+  --font-display: 'Playfair Display', Georgia, 'Times New Roman',
+    'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', serif;
+  --font-body: 'PingFang SC', 'Microsoft YaHei', sans-serif; // 由 --font-family 迁移
+
+  // 排版 scale 追加
+  --font-size-hero: 72px; // 桌面 Hero 标题（移动 40px 用媒体查询覆盖）
+  --font-size-section: 32px; // 章节标题（移动 24px）
+  --font-size-eyebrow: 12px; // 眉题
+  --letter-spacing-eyebrow: 3px;
+  --line-height-display: 1.15;
 }
